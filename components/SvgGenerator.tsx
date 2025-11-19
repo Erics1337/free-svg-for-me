@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { InputSection } from './InputSection';
 import { SvgPreview } from './SvgPreview';
 import { HistorySection } from './HistorySection';
-import { AdUnit } from './AdUnit';
 import { BuyMeCoffee } from './BuyMeCoffee';
 import { generateSvgFromPrompt } from '../services/geminiService';
 import { GeneratedSvg, GenerationStatus, ApiError } from '../types';
@@ -117,17 +116,6 @@ export const SvgGenerator: React.FC = () => {
            <p className="text-zinc-600 text-sm">Generated artwork will appear here</p>
         </div>
       )}
-
-      {/* Ad Unit - Main Content (Commented out until live) */}
-      {/* 
-      <div className="max-w-2xl mx-auto mt-12 mb-12 px-4">
-        <AdUnit 
-          client="YOUR_ADSENSE_CLIENT_ID" 
-          slot="YOUR_AD_SLOT_ID" 
-          className="min-h-[250px]"
-        />
-      </div> 
-      */}
 
       <HistorySection 
         history={history}
