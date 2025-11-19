@@ -1,7 +1,58 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
+
+// Simple in-memory rate limiter
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per minute
+const ipRequestMap = new Map<string, { count: number; lastRequest: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const record = ipRequestMap.get(ip);
+
+  if (!record) {
+    ipRequestMap.set(ip, { count: 1, lastRequest: now });
+    return false;
+  }
+
+  // Reset if window has passed
+  if (now - record.lastRequest > RATE_LIMIT_WINDOW) {
+    ipRequestMap.set(ip, { count: 1, lastRequest: now });
+    return false;
+  }
+
+  // Increment count
+  record.count += 1;
+  return record.count > MAX_REQUESTS_PER_WINDOW;
+}
+
+// Clean up old entries periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of ipRequestMap.entries()) {
+    if (now - record.lastRequest > RATE_LIMIT_WINDOW) {
+      ipRequestMap.delete(ip);
+    }
+  }
+}, RATE_LIMIT_WINDOW * 2);
+
 
 export async function POST(request: Request) {
+  // 1. Rate Limiting Check
+  const headersList = await headers(); // Ensure we await the headers() call in newer Next.js versions if needed, or just call it. In Next 15+ await is required.
+  const ip = headersList.get("x-forwarded-for") || "unknown";
+  
+  // In dev, x-forwarded-for might be null or ::1, which is fine. 
+  // In prod, it's the user's IP.
+  
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: "You are generating too fast! Please wait a minute." },
+      { status: 429 }
+    );
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
