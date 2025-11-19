@@ -1,0 +1,11 @@
+import { SvgGenerator } from "@/components/SvgGenerator";
+import { SEOContent } from "@/components/SEOContent";
+
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30">
+      <SvgGenerator />
+      <SEOContent />
+    </div>
+  );
+}
