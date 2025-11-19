@@ -41,7 +41,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ history, onSelec
           >
             <button
                onClick={() => onSelect(item)}
-               className="flex-1 text-left w-full flex flex-col h-full"
+               className="flex-1 text-left w-full flex flex-col h-full cursor-pointer"
             >
                 {/* Thumbnail Container */}
                 <div className="aspect-square w-full p-4 flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-zinc-950/50 overflow-hidden relative">
@@ -71,7 +71,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ history, onSelec
                     e.stopPropagation();
                     onDelete(item.id);
                 }}
-                className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-red-500/80 text-white/70 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 backdrop-blur-md"
+                className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-red-500/80 text-white/70 hover:text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 backdrop-blur-md cursor-pointer"
                 title="Remove from history"
             >
                 <Trash2 className="w-3.5 h-3.5" />

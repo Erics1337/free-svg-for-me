@@ -67,7 +67,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status }
               flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200
               ${!input.trim() || isLoading || isRateLimited
                 ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
-                : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10'}
+                : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
             `}
           >
             {isLoading ? (
@@ -96,7 +96,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status }
           <button
             key={suggestion}
             onClick={() => setInput(suggestion)}
-            className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/50 border border-white/5 rounded-full hover:bg-zinc-800 hover:text-white hover:border-white/20 transition-all"
+            className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/50 border border-white/5 rounded-full hover:bg-zinc-800 hover:text-white hover:border-white/20 transition-all cursor-pointer"
             disabled={isLoading}
           >
             {suggestion}
