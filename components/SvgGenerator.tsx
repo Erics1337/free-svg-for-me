@@ -118,14 +118,16 @@ export const SvgGenerator: React.FC = () => {
         </div>
       )}
 
-      {/* Ad Unit - Main Content */}
+      {/* Ad Unit - Main Content (Commented out until live) */}
+      {/* 
       <div className="max-w-2xl mx-auto mt-12 mb-12 px-4">
         <AdUnit 
           client="YOUR_ADSENSE_CLIENT_ID" 
           slot="YOUR_AD_SLOT_ID" 
           className="min-h-[250px]"
         />
-      </div>
+      </div> 
+      */}
 
       <HistorySection 
         history={history}
