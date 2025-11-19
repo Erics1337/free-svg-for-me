@@ -14,6 +14,10 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * Uses 'gemini-3-pro' as requested for generation.
  */
 export const generateSvgFromPrompt = async (prompt: string): Promise<string> => {
+  if (!process.env.API_KEY || process.env.API_KEY === 'YOUR_API_KEY_HERE') {
+    throw new Error("Gemini API Key is missing or invalid. Please check your .env file.");
+  }
+
   try {
     const systemPrompt = `
       You are a world-class expert in Scalable Vector Graphics (SVG) design and coding. 

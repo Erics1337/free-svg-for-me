@@ -3,8 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FreeSVGForMe</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Free SVG For Me | AI Vector Art & Icon Generator</title>
+    <meta name="description" content="Generate high-quality, royalty-free SVGs, vector art, and icons instantly using AI. Just describe what you need and get a custom SVG for your project." />
+    <meta name="keywords" content="free svg generator, ai svg, text to vector, custom icons, free vector art, svg creator, royalty free svg" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://freesvgfor.me/" />
+    <meta property="og:title" content="Free SVG For Me | AI Vector Art Generator" />
+    <meta property="og:description" content="Create stunning, custom SVGs from text descriptions in seconds. Free, no signup required." />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Free SVG For Me | AI Vector Art Generator" />
+    <meta property="twitter:description" content="Create stunning, custom SVGs from text descriptions in seconds." />
+    
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -38,19 +53,9 @@
         background: #3f3f46;
       }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.553.0"
-  }
-}
-</script>
-</head>
+  </head>
   <body class="bg-zinc-950 antialiased">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

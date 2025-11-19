@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { InputSection } from './components/InputSection';
 import { SvgPreview } from './components/SvgPreview';
 import { HistorySection } from './components/HistorySection';
+import { SEOContent } from './components/SEOContent';
 import { generateSvgFromPrompt } from './services/geminiService';
 import { GeneratedSvg, GenerationStatus, ApiError } from './types';
 import { AlertCircle } from 'lucide-react';
@@ -87,7 +88,9 @@ const App: React.FC = () => {
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
                 <h4 className="font-semibold text-red-400">{error.message}</h4>
-                <p className="text-sm text-red-300/70 mt-1">{error.details}</p>
+                <p className="text-sm text-red-300/70 mt-1 break-words whitespace-pre-wrap font-mono bg-red-950/30 p-2 rounded mt-2 border border-red-500/10">
+                  {error.details}
+                </p>
               </div>
             </div>
           </div>
@@ -119,6 +122,8 @@ const App: React.FC = () => {
           onDelete={handleDeleteHistory}
           selectedId={currentSvg?.id}
         />
+        
+        <SEOContent />
       </main>
     </div>
   );
