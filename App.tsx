@@ -9,6 +9,7 @@ import { InputSection } from './components/InputSection';
 import { SvgPreview } from './components/SvgPreview';
 import { HistorySection } from './components/HistorySection';
 import { SEOContent } from './components/SEOContent';
+import { AdUnit } from './components/AdUnit';
 import { generateSvgFromPrompt } from './services/geminiService';
 import { GeneratedSvg, GenerationStatus, ApiError } from './types';
 import { AlertCircle } from 'lucide-react';
@@ -115,6 +116,15 @@ const App: React.FC = () => {
              <p className="text-zinc-600 text-sm">Generated artwork will appear here</p>
           </div>
         )}
+
+        {/* Ad Unit - Main Content */}
+        <div className="max-w-2xl mx-auto mt-12 mb-12 px-4">
+          <AdUnit 
+            client="YOUR_ADSENSE_CLIENT_ID" 
+            slot="YOUR_AD_SLOT_ID" 
+            className="min-h-[250px]"
+          />
+        </div>
 
         <HistorySection 
           history={history}

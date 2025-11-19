@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Free SVG For Me 🎨
 
-# Run and deploy your AI Studio app
+**Free SVG For Me** is a simple, powerful tool that generates custom SVGs, icons, and vector art from text descriptions using AI.
 
-This contains everything you need to run your app locally.
+No signups. No paywalls. Just free vector art for your projects.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1APZKUgq8fIZlsXaW1BpN4GpA_lzIDODb
+## Features
 
-## Run Locally
+- 🖌️ **Text-to-SVG:** Powered by Google Gemini AI.
+- ⚡ **Instant Generation:** Get clean code-ready SVGs in seconds.
+- 🆓 **100% Free:** Monetized via unobtrusive ads, so you don't have to pay.
+- 📱 **Responsive:** Works on mobile and desktop.
 
-**Prerequisites:**  Node.js
+## Tech Stack
 
+- **Framework:** Next.js 14 (App Router)
+- **Styling:** Tailwind CSS
+- **AI:** Google Gemini Pro Vision
+- **Icons:** Lucide React
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Running Locally
+
+1. **Clone the repo**
+2. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment:**
+   Create a `.env` file and add your Gemini API key:
+
+   ```bash
+   GEMINI_API_KEY=your_key_here
+   ```
+
+4. **Run the dev server:**
+
+   ```bash
+   npm run dev
+   ```
+
+---
+*Built by [Eric Swanson](https://github.com/Erics1337)*
