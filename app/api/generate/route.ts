@@ -6,6 +6,23 @@ import { headers } from "next/headers";
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per minute
 const ipRequestMap = new Map<string, { count: number; lastRequest: number }>();
+const GEMINI_TIMEOUT_MS = 25_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutHandle!);
+  }
+}
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -94,16 +111,24 @@ export async function POST(request: Request) {
 
     const fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: fullPrompt,
-      config: {
-        systemInstruction: systemPrompt,
-        temperature: 0.4,
-        topP: 0.95,
-        topK: 40,
-      },
-    });
+    console.log("[Gemini SVG] generating", { promptLength: prompt.length });
+
+    const response = await withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: fullPrompt,
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.4,
+          topP: 0.95,
+          topK: 40,
+        },
+      }),
+      GEMINI_TIMEOUT_MS,
+      `Gemini request exceeded ${GEMINI_TIMEOUT_MS / 1000}s`
+    );
+
+    console.log("[Gemini SVG] generation complete");
 
     const rawText = response.text || '';
     
