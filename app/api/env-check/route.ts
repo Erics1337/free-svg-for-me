@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || "gemini-1.0-pro";
+  const model = 'gemini-3-pro-preview';
 
   return NextResponse.json({
     hasKey: Boolean(apiKey),
