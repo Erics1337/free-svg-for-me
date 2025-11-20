@@ -5,9 +5,9 @@ import { InputSection } from './InputSection';
 import { SvgPreview } from './SvgPreview';
 import { HistorySection } from './HistorySection';
 import { BuyMeCoffee } from './BuyMeCoffee';
-import { generateSvgFromPrompt } from '../services/geminiService';
 import { GeneratedSvg, GenerationStatus, ApiError } from '../types';
 import { AlertCircle } from 'lucide-react';
+import { useChat } from 'ai/react';
 
 export const SvgGenerator: React.FC = () => {
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
@@ -19,6 +19,117 @@ export const SvgGenerator: React.FC = () => {
   // History state with localStorage persistence
   const [history, setHistory] = useState<GeneratedSvg[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  const { messages, append, isLoading, error: streamError } = useChat({
+    api: '/api/generate',
+    onFinish: (message) => {
+      const completion = message.content;
+      // Clean up the SVG content
+      let cleanSvg = completion;
+      const svgMatch = completion.match(/<svg[\s\S]*?<\/svg>/i);
+      if (svgMatch && svgMatch[0]) {
+        cleanSvg = svgMatch[0];
+      } else {
+        cleanSvg = completion.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+      }
+
+      // Extract prompt from the message role (not ideal, but we can't easily get the user prompt here without state)
+      // Better approach: Use the last user message from the messages array, but onFinish only gives the assistant message.
+      // We'll rely on the fact that we just appended a user message.
+      // Actually, let's just use a generic prompt or try to find it.
+      // For now, let's assume the user prompt is available via other means or just don't save it here?
+      // Wait, we can just save it when we trigger generation? No, we want to save on success.
+      // Let's look at the messages array.
+    },
+    onError: (err) => {
+      setStatus(GenerationStatus.ERROR);
+      setError({
+        message: "Generation Failed",
+        details: err.message || "An unexpected error occurred."
+      });
+    }
+  });
+
+  // We need to handle onFinish differently because useChat doesn't pass the prompt.
+  // We can use a useEffect to watch for the finish.
+
+  // Actually, let's simplify. We can just use the `messages` array to render the SVG if it's the last message.
+  // But we want to maintain our `currentSvg` state for the preview.
+
+  // Let's stick to the plan: useChat.
+
+  const handleGenerate = async (prompt: string) => {
+    setStatus(GenerationStatus.LOADING);
+    setError(null);
+    setCurrentSvg(null);
+
+    // Trigger the chat
+    await append({
+      role: 'user',
+      content: prompt,
+    }, {
+      body: { model: selectedModel }
+    });
+  };
+
+  // Effect to handle completion and history saving
+  useEffect(() => {
+    if (!isLoading && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        const completion = lastMessage.content;
+
+        // Check if we already processed this message ID to avoid duplicates
+        // (Simple check: is it different from currentSvg content?)
+
+        let cleanSvg = completion;
+        const svgMatch = completion.match(/<svg[\s\S]*?<\/svg>/i);
+        if (svgMatch && svgMatch[0]) {
+          cleanSvg = svgMatch[0];
+        } else {
+          cleanSvg = completion.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+        }
+
+        // Only update if it looks like an SVG
+        if (cleanSvg.includes('<svg')) {
+          // Find the prompt (the message before this one)
+          const promptMessage = messages[messages.length - 2];
+          const prompt = promptMessage?.content || "Generated SVG";
+
+          // Avoid infinite loop / duplicate saves
+          // We can check if the currentSvg ID matches the message ID if we had one, or just check content.
+          // For now, let's just update currentSvg.
+
+          // We only want to do this ONCE when loading finishes.
+          // The isLoading check handles that.
+
+          const newSvg: GeneratedSvg = {
+            id: lastMessage.id, // Use message ID for stability
+            content: cleanSvg,
+            prompt: prompt,
+            timestamp: Date.now()
+          };
+
+          // Only set if different ID
+          if (currentSvg?.id !== newSvg.id) {
+            setCurrentSvg(newSvg);
+            setHistory(prev => {
+              // Prevent duplicates in history
+              if (prev.some(item => item.id === newSvg.id)) return prev;
+              return [newSvg, ...prev];
+            });
+            setStatus(GenerationStatus.SUCCESS);
+          }
+        }
+      }
+    }
+  }, [isLoading, messages]); // Depend on isLoading to trigger when finished
+
+  useEffect(() => {
+    if (isLoading) {
+      setStatus(GenerationStatus.LOADING);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     try {
@@ -42,33 +153,6 @@ export const SvgGenerator: React.FC = () => {
       console.error("Failed to save history to localStorage", e);
     }
   }, [history, historyLoaded]);
-
-  const handleGenerate = async (prompt: string) => {
-    setStatus(GenerationStatus.LOADING);
-    setError(null);
-    setCurrentSvg(null);
-
-    try {
-      const svgContent = await generateSvgFromPrompt(prompt, selectedModel);
-
-      const newSvg: GeneratedSvg = {
-        id: crypto.randomUUID(),
-        content: svgContent,
-        prompt: prompt,
-        timestamp: Date.now()
-      };
-
-      setCurrentSvg(newSvg);
-      setHistory(prev => [newSvg, ...prev]);
-      setStatus(GenerationStatus.SUCCESS);
-    } catch (err: any) {
-      setStatus(GenerationStatus.ERROR);
-      setError({
-        message: "Generation Failed",
-        details: err.message || "An unexpected error occurred while contacting Gemini."
-      });
-    }
-  };
 
   const handleSelectHistory = (item: GeneratedSvg) => {
     setCurrentSvg(item);
