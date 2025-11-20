@@ -59,10 +59,10 @@ export async function POST(request: Request) {
   // 1. Rate Limiting Check
   const headersList = await headers(); // Ensure we await the headers() call in newer Next.js versions if needed, or just call it. In Next 15+ await is required.
   const ip = headersList.get("x-forwarded-for") || "unknown";
-  
+
   // In dev, x-forwarded-for might be null or ::1, which is fine. 
   // In prod, it's the user's IP.
-  
+
   if (isRateLimited(ip)) {
     return NextResponse.json(
       { error: "You are generating too fast! Please wait a minute." },
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   });
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, model } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -111,11 +111,11 @@ export async function POST(request: Request) {
 
     const fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
 
-    console.log("[Gemini SVG] generating", { promptLength: prompt.length });
+    console.log("[Gemini SVG] generating", { promptLength: prompt.length, model });
 
     const response = await withTimeout(
       ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: model || 'gemini-2.0-flash',
         contents: fullPrompt,
         config: {
           systemInstruction: systemPrompt,
@@ -131,11 +131,11 @@ export async function POST(request: Request) {
     console.log("[Gemini SVG] generation complete");
 
     const rawText = response.text || '';
-    
+
     // Robust cleanup
     const svgMatch = rawText.match(/<svg[\s\S]*?<\/svg>/i);
     let cleanSvg = rawText;
-    
+
     if (svgMatch && svgMatch[0]) {
       cleanSvg = svgMatch[0];
     } else {

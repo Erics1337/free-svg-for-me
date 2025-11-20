@@ -12,14 +12,14 @@
  * Generates an SVG string based on the user's prompt.
  * Calls the secure server-side API route.
  */
-export const generateSvgFromPrompt = async (prompt: string): Promise<string> => {
+export const generateSvgFromPrompt = async (prompt: string, model: string): Promise<string> => {
   try {
     const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, model }),
     });
 
     const data = await response.json();
