@@ -2,16 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
-}
-
 // Simple in-memory rate limiter
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5; // 5 requests per minute
@@ -59,7 +49,7 @@ export async function POST(request: Request) {
   if (isRateLimited(ip)) {
     return NextResponse.json(
       { error: "You are generating too fast! Please wait a minute." },
-      { status: 429, headers: corsHeaders }
+      { status: 429 }
     );
   }
 
@@ -68,9 +58,11 @@ export async function POST(request: Request) {
   if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
     return NextResponse.json(
       { error: "Gemini API Key is missing or invalid in server environment." },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
+
+  const modelId = process.env.GEMINI_MODEL || "gemini-3-pro-preview";
 
   try {
     const { prompt } = await request.json();
@@ -78,7 +70,7 @@ export async function POST(request: Request) {
     if (!prompt) {
       return NextResponse.json(
         { error: "Prompt is required" },
-        { status: 400, headers: corsHeaders }
+        { status: 400 }
       );
     }
 
@@ -101,7 +93,7 @@ export async function POST(request: Request) {
     const fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: modelId,
       contents: fullPrompt,
       config: {
         systemInstruction: systemPrompt,
@@ -123,13 +115,13 @@ export async function POST(request: Request) {
       cleanSvg = rawText.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
     }
 
-    return NextResponse.json({ svg: cleanSvg }, { headers: corsHeaders });
+    return NextResponse.json({ svg: cleanSvg });
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to generate SVG" },
-      { status: 500, headers: corsHeaders }
+      { status: 500 }
     );
   }
 }
