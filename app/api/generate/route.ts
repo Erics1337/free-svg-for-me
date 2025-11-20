@@ -62,7 +62,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const modelId = process.env.GEMINI_MODEL || "gemini-3-pro-preview";
+  const modelId = process.env.GEMINI_MODEL || "gemini-1.0-pro";
+
+  console.log("[Gemini SVG] env status", {
+    hasKey: Boolean(apiKey),
+    modelId,
+  });
 
   try {
     const { prompt } = await request.json();
