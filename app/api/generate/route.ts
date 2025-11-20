@@ -62,11 +62,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const modelId = process.env.GEMINI_MODEL || "gemini-1.0-pro";
-
   console.log("[Gemini SVG] env status", {
     hasKey: Boolean(apiKey),
-    modelId,
   });
 
   try {
@@ -98,7 +95,7 @@ export async function POST(request: Request) {
     const fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
 
     const response = await ai.models.generateContent({
-      model: modelId,
+      model: 'gemini-3-pro-preview',
       contents: fullPrompt,
       config: {
         systemInstruction: systemPrompt,
