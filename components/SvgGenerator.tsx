@@ -15,25 +15,31 @@ export const SvgGenerator: React.FC = () => {
   const [error, setError] = useState<ApiError | null>(null);
   
   // History state with localStorage persistence
-  const [history, setHistory] = useState<GeneratedSvg[]>(() => {
-    if (typeof window === 'undefined') return [];
+  const [history, setHistory] = useState<GeneratedSvg[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => {
     try {
       const saved = localStorage.getItem('vectorcraft_history');
-      return saved ? JSON.parse(saved) : [];
+      if (saved) {
+        setHistory(JSON.parse(saved));
+      }
     } catch (e) {
       console.error("Failed to load history from localStorage", e);
-      return [];
+    } finally {
+      setHistoryLoaded(true);
     }
-  });
+  }, []);
 
   // Save history whenever it changes
   useEffect(() => {
+    if (!historyLoaded) return;
     try {
       localStorage.setItem('vectorcraft_history', JSON.stringify(history));
     } catch (e) {
       console.error("Failed to save history to localStorage", e);
     }
-  }, [history]);
+  }, [history, historyLoaded]);
 
   const handleGenerate = async (prompt: string) => {
     setStatus(GenerationStatus.LOADING);
@@ -117,12 +123,14 @@ export const SvgGenerator: React.FC = () => {
         </div>
       )}
 
-      <HistorySection 
-        history={history}
-        onSelect={handleSelectHistory}
-        onDelete={handleDeleteHistory}
-        selectedId={currentSvg?.id}
-      />
+      {historyLoaded && (
+        <HistorySection 
+          history={history}
+          onSelect={handleSelectHistory}
+          onDelete={handleDeleteHistory}
+          selectedId={currentSvg?.id}
+        />
+      )}
     </main>
   );
 };

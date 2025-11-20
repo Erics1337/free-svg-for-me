@@ -8,6 +8,14 @@ import React from 'react';
 import { GeneratedSvg } from '../types';
 import { Clock, Trash2 } from 'lucide-react';
 
+const timestampFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+});
+
 interface HistorySectionProps {
   history: GeneratedSvg[];
   onSelect: (item: GeneratedSvg) => void;
@@ -60,7 +68,7 @@ export const HistorySection: React.FC<HistorySectionProps> = ({ history, onSelec
                     {item.prompt}
                   </p>
                   <p className="text-[10px] text-zinc-500 mt-auto">
-                    {new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {timestampFormatter.format(new Date(item.timestamp))}
                   </p>
                 </div>
             </button>
