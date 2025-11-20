@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
+    "ai": "^4.1.41",
+    "@ai-sdk/google": "^1.1.10",
+    "zod": "^3.24.2",
     "autoprefixer": "^10.4.22",
     "lucide-react": "^0.553.0",
     "next": "^16.0.3",

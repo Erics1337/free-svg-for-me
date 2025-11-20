@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Send, Loader2, Wand2 } from 'lucide-react';
 import { GenerationStatus } from '../types';
 
@@ -18,6 +18,9 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [input, setInput] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+
   // Cooldown timer effect
   React.useEffect(() => {
     if (cooldown > 0) {
@@ -25,6 +28,28 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
       return () => clearTimeout(timer);
     }
   }, [cooldown]);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      try {
+        const res = await fetch('/api/suggestions');
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data);
+        } else {
+          // Fallback if API fails
+          setSuggestions(['Retro Camera', 'Space Rocket', 'Origami Bird', 'Isometric House']);
+        }
+      } catch (e) {
+        console.error("Failed to fetch suggestions", e);
+        setSuggestions(['Retro Camera', 'Space Rocket', 'Origami Bird', 'Isometric House']);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    };
+
+    fetchSuggestions();
+  }, []);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -108,17 +133,25 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
       </form>
 
       {/* Quick suggestions */}
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        {['Retro Camera', 'Space Rocket', 'Origami Bird', 'Isometric House'].map((suggestion) => (
-          <button
-            key={suggestion}
-            onClick={() => setInput(suggestion)}
-            className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/50 border border-white/5 rounded-full hover:bg-zinc-800 hover:text-white hover:border-white/20 transition-all cursor-pointer"
-            disabled={isLoading}
-          >
-            {suggestion}
-          </button>
-        ))}
+      <div className="mt-6 flex flex-wrap justify-center gap-2 min-h-[32px]">
+        {loadingSuggestions ? (
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-8 w-24 bg-zinc-800/50 rounded-full animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => setInput(suggestion)}
+              className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/50 border border-white/5 rounded-full hover:bg-zinc-800 hover:text-white hover:border-white/20 transition-all cursor-pointer"
+              disabled={isLoading}
+            >
+              {suggestion}
+            </button>
+          ))
+        )}
       </div>
     </div>
   );
