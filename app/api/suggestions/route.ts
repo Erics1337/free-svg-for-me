@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 const google = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
@@ -13,10 +14,11 @@ export async function GET() {
     try {
         const { object } = await generateObject({
             model: google('gemini-2.0-flash'),
+            temperature: 1.0,
             schema: z.object({
                 suggestions: z.array(z.string()).length(4),
             }),
-            prompt: 'Generate 4 creative, distinct, and visually interesting short descriptions for SVG vector art. They should be diverse (e.g., one icon, one scene, one object, one abstract). Keep them under 10 words each. Examples: "Neon Cyberpunk Helmet", "Isometric Cozy Cottage", "Geometric Origami Bird", "Retro Film Camera".',
+            prompt: `Generate 4 creative, distinct, and visually interesting short descriptions for SVG vector art. They should be diverse (e.g., one icon, one scene, one object, one abstract). Keep them under 10 words each. Examples: "Neon Cyberpunk Helmet", "Isometric Cozy Cottage", "Geometric Origami Bird", "Retro Film Camera". Random seed: ${Date.now()}`,
         });
 
         return NextResponse.json(object.suggestions);

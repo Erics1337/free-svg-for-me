@@ -32,7 +32,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   useEffect(() => {
     const fetchSuggestions = async () => {
       try {
-        const res = await fetch('/api/suggestions');
+        const res = await fetch('/api/suggestions', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           setSuggestions(data);
