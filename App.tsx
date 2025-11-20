@@ -17,6 +17,7 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
   
   // History state with localStorage persistence
   const [history, setHistory] = useState<GeneratedSvg[]>(() => {
@@ -44,7 +45,7 @@ const App: React.FC = () => {
     setCurrentSvg(null);
 
     try {
-      const svgContent = await generateSvgFromPrompt(prompt);
+      const svgContent = await generateSvgFromPrompt(prompt, selectedModel);
       
       const newSvg: GeneratedSvg = {
         id: crypto.randomUUID(),
@@ -80,7 +81,12 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 pt-8">      
       <main className="pb-20">
-        <InputSection onGenerate={handleGenerate} status={status} />
+        <InputSection 
+          onGenerate={handleGenerate} 
+          status={status} 
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+        />
         
         {status === GenerationStatus.ERROR && error && (
           <div className="max-w-2xl mx-auto mt-8 px-4">

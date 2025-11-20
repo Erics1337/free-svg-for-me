@@ -76,7 +76,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
       <form onSubmit={handleSubmit} className="relative group">
         <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur-lg"></div>
         <div className="relative flex flex-col gap-2 bg-zinc-900 rounded-xl border border-white/10 shadow-2xl overflow-hidden p-2">
-          <div className="flex items-center w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center w-full gap-2 sm:gap-0">
             <div className="pl-4 text-zinc-500">
               <Wand2 className="w-5 h-5" />
             </div>
@@ -85,14 +85,14 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="e.g. A futuristic cyberpunk helmet with neon lights..."
-              className="flex-1 bg-transparent border-none outline-none text-white placeholder-zinc-500 px-4 py-3 text-lg"
+              className="flex-1 w-full bg-transparent border-none outline-none text-white placeholder-zinc-500 px-4 py-3 text-lg"
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading || isRateLimited}
               className={`
-                flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200
+                flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 w-full sm:w-auto
                 ${!input.trim() || isLoading || isRateLimited
                   ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                   : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
