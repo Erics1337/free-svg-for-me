@@ -7,7 +7,17 @@ const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
+import { checkRateLimit } from '../../../lib/rate-limit';
+
 export async function POST(req: Request) {
+  // Rate Limit Check
+  const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+  const isAllowed = checkRateLimit(ip, { limit: 2, window: 60000 }); // 2 requests per minute
+
+  if (!isAllowed) {
+    return new Response('Too Many Requests', { status: 429 });
+  }
+
   const { messages, model } = await req.json();
 
   // Get the last message content as the prompt

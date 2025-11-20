@@ -10,7 +10,17 @@ const google = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
 });
 
-export async function GET() {
+import { checkRateLimit } from '../../../lib/rate-limit';
+
+export async function GET(req: Request) {
+    // Rate Limit Check
+    const ip = req.headers.get('x-forwarded-for') || 'anonymous';
+    const isAllowed = checkRateLimit(ip, { limit: 5, window: 60000 }); // 5 requests per minute
+
+    if (!isAllowed) {
+        return new NextResponse('Too Many Requests', { status: 429 });
+    }
+
     try {
         const { object } = await generateObject({
             model: google('gemini-2.0-flash'),
