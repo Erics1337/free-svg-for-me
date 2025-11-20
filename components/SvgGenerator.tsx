@@ -78,7 +78,7 @@ export const SvgGenerator: React.FC = () => {
     <main className="pb-20 pt-8">
       {/* Header with Coffee Button */}
       <div className="absolute top-4 right-4 z-10">
-        <BuyMeCoffee username="yourusername" />
+        <BuyMeCoffee username="erics1337" />
       </div>
 
       <InputSection onGenerate={handleGenerate} status={status} />
