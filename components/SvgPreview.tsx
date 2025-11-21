@@ -46,7 +46,7 @@ export const SvgPreview: React.FC<SvgPreviewProps> = ({ data }) => {
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-zinc-900/50">
           <div className="flex items-center gap-3 overflow-hidden">
-            <h3 className="text-sm font-medium text-zinc-300 truncate max-w-[150px] sm:max-w-xs">
+            <h3 className="text-sm font-medium text-zinc-300 truncate max-w-[150px] sm:max-w-xs" title={`Result: "${data.prompt}"`}>
               Result: <span className="text-zinc-500">"{data.prompt}"</span>
             </h3>
           </div>
