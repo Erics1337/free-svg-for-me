@@ -58,7 +58,7 @@ export const SvgGenerator: React.FC = () => {
 
   // Let's stick to the plan: useChat.
 
-  const handleGenerate = async (prompt: string, animate: boolean) => {
+  const handleGenerate = async (prompt: string, animate: boolean, transparent: boolean) => {
     setStatus(GenerationStatus.LOADING);
     setError(null);
     setCurrentSvg(null);
@@ -68,7 +68,7 @@ export const SvgGenerator: React.FC = () => {
       role: 'user',
       content: prompt,
     }, {
-      body: { model: selectedModel, animate }
+      body: { model: selectedModel, animate, transparent }
     });
   };
 

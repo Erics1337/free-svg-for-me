@@ -10,7 +10,7 @@ import { experimental_useObject as useObject } from 'ai/react';
 import { z } from 'zod';
 
 interface InputSectionProps {
-  onGenerate: (prompt: string, animate: boolean) => void;
+  onGenerate: (prompt: string, animate: boolean, transparent: boolean) => void;
   status: GenerationStatus;
   selectedModel: string;
   onModelChange: (model: string) => void;
@@ -21,6 +21,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [cooldown, setCooldown] = useState(0);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
   const [isAnimated, setIsAnimated] = useState(false);
+  const [isTransparent, setIsTransparent] = useState(false);
 
   const { object, submit, isLoading: isSuggestionsLoading } = useObject({
     api: '/api/suggestions',
@@ -47,10 +48,10 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0) {
-      onGenerate(input.trim(), isAnimated);
+      onGenerate(input.trim(), isAnimated, isTransparent);
       setCooldown(5); // 5 second cooldown
     }
-  }, [input, status, onGenerate, cooldown, isAnimated]);
+  }, [input, status, onGenerate, cooldown, isAnimated, isTransparent]);
 
   const isLoading = status === GenerationStatus.LOADING;
   const isRateLimited = cooldown > 0;
@@ -85,24 +86,10 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
             </div>
             <div className="flex w-full sm:w-auto">
               <button
-                type="button"
-                onClick={() => setIsAnimated(!isAnimated)}
-                className={`
-                  px-3 py-3 border-r text-sm flex items-center justify-center transition-colors
-                  ${isAnimated ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-zinc-300'}
-                  ${isLoading || isRateLimited ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
-                `}
-                disabled={isLoading || isRateLimited}
-                title="Toggle Animation"
-              >
-                <span className="text-xs font-medium mr-1">Animate</span>
-                <div className={`w-3 h-3 rounded-full border ${isAnimated ? 'bg-indigo-400 border-indigo-400' : 'border-zinc-500'}`} />
-              </button>
-              <button
                 type="submit"
                 disabled={!input.trim() || isLoading || isRateLimited}
                 className={`
-                  flex items-center justify-center gap-2 px-6 py-3 font-semibold transition-all duration-200 flex-1
+                  flex items-center justify-center gap-2 px-6 py-3 rounded-l-lg font-semibold transition-all duration-200 flex-1
                   ${!input.trim() || isLoading || isRateLimited
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                     : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
@@ -141,30 +128,55 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
             </div>
           </div>
 
-          {/* Model Selector */}
+          {/* Options Menu */}
           {isModelMenuOpen && (
             <div className="px-2 pb-1 relative">
-              <div className="absolute right-2 top-0 mt-1 z-20 w-56 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onModelChange('gemini-2.0-flash');
-                    setIsModelMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs rounded-t-lg hover:bg-zinc-800 cursor-pointer ${selectedModel === 'gemini-2.0-flash' ? 'text-white' : 'text-zinc-300'}`}
-                >
-                  Gemini 2.0 Flash (Fast)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onModelChange('gemini-3-pro-preview');
-                    setIsModelMenuOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs rounded-b-lg hover:bg-zinc-800 cursor-pointer ${selectedModel === 'gemini-3-pro-preview' ? 'text-white' : 'text-zinc-300'}`}
-                >
-                  Gemini 3.0 Pro Preview (High Quality)
-                </button>
+              <div className="absolute right-2 top-0 mt-1 z-20 w-64 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl overflow-hidden">
+                <div className="p-2 space-y-2">
+                  <div className="text-xs font-semibold text-zinc-500 px-2 uppercase tracking-wider">Model</div>
+                  <button
+                    type="button"
+                    onClick={() => onModelChange('gemini-2.0-flash')}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-2.0-flash' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                  >
+                    <span>Gemini 2.0 Flash</span>
+                    {selectedModel === 'gemini-2.0-flash' && <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onModelChange('gemini-3-pro-preview')}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                  >
+                    <span>Gemini 3.0 Pro</span>
+                    {selectedModel === 'gemini-3-pro-preview' && <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]" />}
+                  </button>
+
+                  <div className="h-px bg-zinc-800 my-2" />
+
+                  <div className="text-xs font-semibold text-zinc-500 px-2 uppercase tracking-wider">Settings</div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAnimated(!isAnimated)}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isAnimated ? 'bg-indigo-500/20 text-indigo-300' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                  >
+                    <span>Animate SVG</span>
+                    <div className={`w-9 h-5 rounded-full relative transition-colors ${isAnimated ? 'bg-indigo-500' : 'bg-zinc-700'}`}>
+                      <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${isAnimated ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsTransparent(!isTransparent)}
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isTransparent ? 'bg-blue-500/20 text-blue-300' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                  >
+                    <span>Transparent BG</span>
+                    <div className={`w-9 h-5 rounded-full relative transition-colors ${isTransparent ? 'bg-blue-500' : 'bg-zinc-700'}`}>
+                      <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${isTransparent ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           )}

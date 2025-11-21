@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return new Response('Too Many Requests', { status: 429 });
   }
 
-  const { messages, model, animate } = await req.json();
+  const { messages, model, animate, transparent } = await req.json();
 
   // Get the last message content as the prompt
   const lastMessage = messages[messages.length - 1];
@@ -44,6 +44,12 @@ export async function POST(req: Request) {
     fullPrompt += `\n\nIMPORTANT: Make this SVG animated using CSS keyframes or SMIL. The animation should be subtle, continuous, and looping. Ensure the animation adds life to the object (e.g., glowing, floating, rotating parts, or color shifts).`;
   } else {
     fullPrompt += `\n\nIMPORTANT: Do NOT include any animations, CSS keyframes, or SMIL. The SVG should be completely static.`;
+  }
+
+  if (transparent) {
+    fullPrompt += `\n\nIMPORTANT: The SVG must have a TRANSPARENT background. Do NOT include any background <rect> or shapes. The background should be left empty so it can be placed on any color.`;
+  } else {
+    fullPrompt += `\n\nIMPORTANT: The SVG MUST have a background. Include a background <rect> or shape that fills the viewBox with a color appropriate for the scene or object (e.g., a sky, a solid color, or a gradient). Do not leave the background transparent.`;
   }
 
   console.log("[Gemini SVG] streaming", { promptLength: prompt.length, model });
