@@ -14,7 +14,16 @@ export const SvgGenerator: React.FC = () => {
   const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vectorcraft_model') || 'gemini-2.0-flash';
+    }
+    return 'gemini-2.0-flash';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('vectorcraft_model', selectedModel);
+  }, [selectedModel]);
 
   // History state with localStorage persistence
   const [history, setHistory] = useState<GeneratedSvg[]>([]);

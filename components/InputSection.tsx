@@ -20,8 +20,26 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [input, setInput] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
-  const [isAnimated, setIsAnimated] = useState(false);
-  const [isTransparent, setIsTransparent] = useState(false);
+  const [isAnimated, setIsAnimated] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vectorcraft_animated') === 'true';
+    }
+    return false;
+  });
+  const [isTransparent, setIsTransparent] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('vectorcraft_transparent') === 'true';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('vectorcraft_animated', String(isAnimated));
+  }, [isAnimated]);
+
+  useEffect(() => {
+    localStorage.setItem('vectorcraft_transparent', String(isTransparent));
+  }, [isTransparent]);
 
   const { object, submit, isLoading: isSuggestionsLoading } = useObject({
     api: '/api/suggestions',
