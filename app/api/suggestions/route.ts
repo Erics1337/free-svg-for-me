@@ -28,7 +28,7 @@ export async function POST(req: Request) {
             schema: z.object({
                 suggestions: z.array(z.string()).length(4),
             }),
-            prompt: `Generate 4 creative, distinct, and visually interesting short descriptions for SVG vector art. They should be diverse (e.g., one icon, one scene, one object, one abstract). Keep them under 10 words each. Examples: "Neon Cyberpunk Helmet", "Isometric Cozy Cottage", "Geometric Origami Bird", "Retro Film Camera". Random seed: ${Date.now()}`,
+            prompt: `Generate 4 creative, distinct, and visually interesting short descriptions for SVG vector art. They should be diverse (e.g., one icon, one scene, one object, one abstract). Keep them under 10 words each. Do not end with a period. Examples: "Neon Cyberpunk Helmet", "Isometric Cozy Cottage", "Geometric Origami Bird", "Retro Film Camera". Random seed: ${Date.now()}`,
         });
 
         return result.toTextStreamResponse();

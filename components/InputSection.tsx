@@ -172,7 +172,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
               className="px-3 py-1.5 text-xs font-medium text-zinc-400 bg-zinc-800/50 border border-white/5 rounded-full hover:bg-zinc-800 hover:text-white hover:border-white/20 transition-all cursor-pointer"
               disabled={isLoading}
             >
-              {suggestion}
+              {suggestion.replace(/\.$/, '')}
             </button>
           ))
         )}
