@@ -96,7 +96,8 @@ export const SvgGenerator: React.FC = () => {
               id: 'streaming',
               content: cleanSvg,
               prompt: 'Generating...',
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              model: selectedModel
             });
           }
         } else {
@@ -110,7 +111,8 @@ export const SvgGenerator: React.FC = () => {
               id: lastMessage.id, // Use message ID for stability
               content: cleanSvg,
               prompt: prompt,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              model: selectedModel
             };
 
             // Only set if different ID or if we were in streaming mode
@@ -127,7 +129,7 @@ export const SvgGenerator: React.FC = () => {
         }
       }
     }
-  }, [isLoading, messages]); // Depend on isLoading to trigger when finished
+  }, [isLoading, messages, selectedModel]); // Depend on isLoading to trigger when finished
 
   useEffect(() => {
     if (isLoading) {
