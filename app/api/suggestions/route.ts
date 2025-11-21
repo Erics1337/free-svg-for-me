@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateObject } from 'ai';
+import { generateObject, streamObject } from 'ai';
 import { z } from 'zod';
 import { NextResponse } from 'next/server';
 
@@ -12,7 +12,7 @@ const google = createGoogleGenerativeAI({
 
 import { checkRateLimit } from '../../../lib/rate-limit';
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
     // Rate Limit Check
     const ip = req.headers.get('x-forwarded-for') || 'anonymous';
     const isAllowed = checkRateLimit(ip, { limit: 5, window: 60000 }); // 5 requests per minute
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     }
 
     try {
-        const { object } = await generateObject({
+        const result = await streamObject({
             model: google('gemini-2.0-flash'),
             temperature: 1.0,
             schema: z.object({
@@ -31,15 +31,17 @@ export async function GET(req: Request) {
             prompt: `Generate 4 creative, distinct, and visually interesting short descriptions for SVG vector art. They should be diverse (e.g., one icon, one scene, one object, one abstract). Keep them under 10 words each. Examples: "Neon Cyberpunk Helmet", "Isometric Cozy Cottage", "Geometric Origami Bird", "Retro Film Camera". Random seed: ${Date.now()}`,
         });
 
-        return NextResponse.json(object.suggestions);
+        return result.toTextStreamResponse();
     } catch (error) {
         console.error("Failed to generate suggestions:", error);
         // Fallback suggestions in case of error
-        return NextResponse.json([
-            'Retro Camera',
-            'Space Rocket',
-            'Origami Bird',
-            'Isometric House'
-        ]);
+        return NextResponse.json({
+            suggestions: [
+                'Retro Camera',
+                'Space Rocket',
+                'Origami Bird',
+                'Isometric House'
+            ]
+        });
     }
 }

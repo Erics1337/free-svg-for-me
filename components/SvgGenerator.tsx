@@ -74,13 +74,10 @@ export const SvgGenerator: React.FC = () => {
 
   // Effect to handle completion and history saving
   useEffect(() => {
-    if (!isLoading && messages.length > 0) {
+    if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'assistant') {
         const completion = lastMessage.content;
-
-        // Check if we already processed this message ID to avoid duplicates
-        // (Simple check: is it different from currentSvg content?)
 
         let cleanSvg = completion;
         const svgMatch = completion.match(/<svg[\s\S]*?<\/svg>/i);
@@ -90,35 +87,42 @@ export const SvgGenerator: React.FC = () => {
           cleanSvg = completion.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
         }
 
-        // Only update if it looks like an SVG
-        if (cleanSvg.includes('<svg')) {
-          // Find the prompt (the message before this one)
-          const promptMessage = messages[messages.length - 2];
-          const prompt = promptMessage?.content || "Generated SVG";
-
-          // Avoid infinite loop / duplicate saves
-          // We can check if the currentSvg ID matches the message ID if we had one, or just check content.
-          // For now, let's just update currentSvg.
-
-          // We only want to do this ONCE when loading finishes.
-          // The isLoading check handles that.
-
-          const newSvg: GeneratedSvg = {
-            id: lastMessage.id, // Use message ID for stability
-            content: cleanSvg,
-            prompt: prompt,
-            timestamp: Date.now()
-          };
-
-          // Only set if different ID
-          if (currentSvg?.id !== newSvg.id) {
-            setCurrentSvg(newSvg);
-            setHistory(prev => {
-              // Prevent duplicates in history
-              if (prev.some(item => item.id === newSvg.id)) return prev;
-              return [newSvg, ...prev];
+        // If we are loading, we just want to show the preview
+        if (isLoading) {
+          // Only update if it looks like it might be an SVG (starts with <svg)
+          // or if we want to show the raw text streaming
+          if (cleanSvg.includes('<svg') || cleanSvg.length > 10) {
+            setCurrentSvg({
+              id: 'streaming',
+              content: cleanSvg,
+              prompt: 'Generating...',
+              timestamp: Date.now()
             });
-            setStatus(GenerationStatus.SUCCESS);
+          }
+        } else {
+          // Finished loading, save to history
+          if (cleanSvg.includes('<svg')) {
+            // Find the prompt (the message before this one)
+            const promptMessage = messages[messages.length - 2];
+            const prompt = promptMessage?.content || "Generated SVG";
+
+            const newSvg: GeneratedSvg = {
+              id: lastMessage.id, // Use message ID for stability
+              content: cleanSvg,
+              prompt: prompt,
+              timestamp: Date.now()
+            };
+
+            // Only set if different ID or if we were in streaming mode
+            if (currentSvg?.id !== newSvg.id || currentSvg?.id === 'streaming') {
+              setCurrentSvg(newSvg);
+              setHistory(prev => {
+                // Prevent duplicates in history
+                if (prev.some(item => item.id === newSvg.id)) return prev;
+                return [newSvg, ...prev];
+              });
+              setStatus(GenerationStatus.SUCCESS);
+            }
           }
         }
       }
@@ -194,7 +198,7 @@ export const SvgGenerator: React.FC = () => {
         </div>
       )}
 
-      {status === GenerationStatus.SUCCESS && currentSvg && (
+      {(status === GenerationStatus.SUCCESS || (status === GenerationStatus.LOADING && currentSvg)) && currentSvg && (
         <SvgPreview
           data={currentSvg}
         />

@@ -6,6 +6,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Send, Loader2, Wand2 } from 'lucide-react';
 import { GenerationStatus } from '../types';
+import { experimental_useObject as useObject } from 'ai/react';
+import { z } from 'zod';
 
 interface InputSectionProps {
   onGenerate: (prompt: string) => void;
@@ -19,8 +21,15 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [cooldown, setCooldown] = useState(0);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
 
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+  const { object, submit, isLoading: isSuggestionsLoading } = useObject({
+    api: '/api/suggestions',
+    schema: z.object({
+      suggestions: z.array(z.string()),
+    }),
+  });
+
+  const suggestions = object?.suggestions || [];
+  const loadingSuggestions = isSuggestionsLoading && suggestions.length === 0;
 
   // Cooldown timer effect
   React.useEffect(() => {
@@ -31,25 +40,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   }, [cooldown]);
 
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      try {
-        const res = await fetch('/api/suggestions', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          setSuggestions(data);
-        } else {
-          // Fallback if API fails
-          setSuggestions(['Retro Camera', 'Space Rocket', 'Origami Bird', 'Isometric House']);
-        }
-      } catch (e) {
-        console.error("Failed to fetch suggestions", e);
-        setSuggestions(['Retro Camera', 'Space Rocket', 'Origami Bird', 'Isometric House']);
-      } finally {
-        setLoadingSuggestions(false);
-      }
-    };
-
-    fetchSuggestions();
+    submit({});
   }, []);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
