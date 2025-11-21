@@ -17,6 +17,7 @@ interface InputSectionProps {
 export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, selectedModel, onModelChange }) => {
   const [input, setInput] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
 
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
@@ -75,60 +76,92 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
 
       <form onSubmit={handleSubmit} className="relative group">
         <div className="absolute -inset-1 bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur-lg"></div>
-        <div className="relative flex flex-col gap-2 bg-zinc-900 rounded-xl border border-white/10 shadow-2xl overflow-hidden p-2">
+        <div className="relative flex flex-col gap-2 bg-zinc-900 rounded-xl border border-white/10 shadow-2xl p-2">
           <div className="flex flex-col sm:flex-row sm:items-center w-full gap-2 sm:gap-0">
-            <div className="pl-4 text-zinc-500">
-              <Wand2 className="w-5 h-5" />
+            <div className="flex items-center flex-1 w-full gap-2">
+              <div className="pl-4 text-zinc-500">
+                <Wand2 className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="e.g. A futuristic cyberpunk helmet with neon lights..."
+                className="flex-1 w-full bg-transparent border-none outline-none text-white placeholder-zinc-500 px-2 py-3 text-lg"
+                disabled={isLoading}
+              />
             </div>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="e.g. A futuristic cyberpunk helmet with neon lights..."
-              className="flex-1 w-full bg-transparent border-none outline-none text-white placeholder-zinc-500 px-4 py-3 text-lg"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading || isRateLimited}
-              className={`
-                flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200 w-full sm:w-auto
-                ${!input.trim() || isLoading || isRateLimited
-                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                  : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
-              `}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="hidden sm:inline">Crafting...</span>
-                </>
-              ) : isRateLimited ? (
-                <>
-                  <span className="hidden sm:inline">Wait {cooldown}s</span>
-                  <span className="sm:hidden">{cooldown}s</span>
-                </>
-              ) : (
-                <>
-                  <span className="hidden sm:inline">Generate</span>
-                  <Send className="w-5 h-5" />
-                </>
-              )}
-            </button>
+            <div className="flex w-full sm:w-auto">
+              <button
+                type="submit"
+                disabled={!input.trim() || isLoading || isRateLimited}
+                className={`
+                  flex items-center justify-center gap-2 px-6 py-3 rounded-l-lg font-semibold transition-all duration-200 flex-1
+                  ${!input.trim() || isLoading || isRateLimited
+                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                    : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
+                `}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="hidden sm:inline">Crafting...</span>
+                  </>
+                ) : isRateLimited ? (
+                  <>
+                    <span className="hidden sm:inline">Wait {cooldown}s</span>
+                    <span className="sm:hidden">{cooldown}s</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Generate</span>
+                    <Send className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                disabled={isLoading || isRateLimited}
+                onClick={() => setIsModelMenuOpen(open => !open)}
+                className={`
+                  px-3 py-3 rounded-r-lg border-l text-sm flex items-center justify-center
+                  ${isLoading || isRateLimited
+                    ? 'bg-zinc-800 text-zinc-500 border-zinc-700 cursor-not-allowed'
+                    : 'bg-white text-zinc-950 border-zinc-300 hover:bg-zinc-200 cursor-pointer'}
+                `}
+              >
+                <span className="text-xs">▼</span>
+              </button>
+            </div>
           </div>
 
           {/* Model Selector */}
-          <div className="flex justify-end px-2 pb-1">
-            <select
-              value={selectedModel}
-              onChange={(e) => onModelChange(e.target.value)}
-              className="bg-zinc-800 text-zinc-300 text-xs py-1 px-2 rounded border border-zinc-700 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              disabled={isLoading}
-            >
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast)</option>
-              <option value="gemini-3-pro-preview">Gemini 3.0 Pro Preview (High Quality)</option>
-            </select>
-          </div>
+          {isModelMenuOpen && (
+            <div className="px-2 pb-1 relative">
+              <div className="absolute right-2 top-0 mt-1 z-20 w-56 rounded-lg border border-zinc-700 bg-zinc-900 shadow-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onModelChange('gemini-2.0-flash');
+                    setIsModelMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs rounded-t-lg hover:bg-zinc-800 cursor-pointer ${selectedModel === 'gemini-2.0-flash' ? 'text-white' : 'text-zinc-300'}`}
+                >
+                  Gemini 2.0 Flash (Fast)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onModelChange('gemini-3-pro-preview');
+                    setIsModelMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs rounded-b-lg hover:bg-zinc-800 cursor-pointer ${selectedModel === 'gemini-3-pro-preview' ? 'text-white' : 'text-zinc-300'}`}
+                >
+                  Gemini 3.0 Pro Preview (High Quality)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </form>
 
