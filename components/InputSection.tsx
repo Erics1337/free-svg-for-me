@@ -67,7 +67,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
     e.preventDefault();
     if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0) {
       onGenerate(input.trim(), isAnimated, isTransparent);
-      setCooldown(5); // 5 second cooldown
+      setCooldown(30); // 30 second cooldown to match rate limit (2 req/min)
     }
   }, [input, status, onGenerate, cooldown, isAnimated, isTransparent]);
 
