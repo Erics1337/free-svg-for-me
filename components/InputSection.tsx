@@ -10,7 +10,7 @@ import { experimental_useObject as useObject } from 'ai/react';
 import { z } from 'zod';
 
 interface InputSectionProps {
-  onGenerate: (prompt: string) => void;
+  onGenerate: (prompt: string, animate: boolean) => void;
   status: GenerationStatus;
   selectedModel: string;
   onModelChange: (model: string) => void;
@@ -20,6 +20,7 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [input, setInput] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const [isAnimated, setIsAnimated] = useState(false);
 
   const { object, submit, isLoading: isSuggestionsLoading } = useObject({
     api: '/api/suggestions',
@@ -46,10 +47,10 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0) {
-      onGenerate(input.trim());
+      onGenerate(input.trim(), isAnimated);
       setCooldown(5); // 5 second cooldown
     }
-  }, [input, status, onGenerate, cooldown]);
+  }, [input, status, onGenerate, cooldown, isAnimated]);
 
   const isLoading = status === GenerationStatus.LOADING;
   const isRateLimited = cooldown > 0;
@@ -84,10 +85,24 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
             </div>
             <div className="flex w-full sm:w-auto">
               <button
+                type="button"
+                onClick={() => setIsAnimated(!isAnimated)}
+                className={`
+                  px-3 py-3 border-r text-sm flex items-center justify-center transition-colors
+                  ${isAnimated ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-500 hover:text-zinc-300'}
+                  ${isLoading || isRateLimited ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+                `}
+                disabled={isLoading || isRateLimited}
+                title="Toggle Animation"
+              >
+                <span className="text-xs font-medium mr-1">Animate</span>
+                <div className={`w-3 h-3 rounded-full border ${isAnimated ? 'bg-indigo-400 border-indigo-400' : 'border-zinc-500'}`} />
+              </button>
+              <button
                 type="submit"
                 disabled={!input.trim() || isLoading || isRateLimited}
                 className={`
-                  flex items-center justify-center gap-2 px-6 py-3 rounded-l-lg font-semibold transition-all duration-200 flex-1
+                  flex items-center justify-center gap-2 px-6 py-3 font-semibold transition-all duration-200 flex-1
                   ${!input.trim() || isLoading || isRateLimited
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                     : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}

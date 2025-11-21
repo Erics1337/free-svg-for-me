@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     return new Response('Too Many Requests', { status: 429 });
   }
 
-  const { messages, model } = await req.json();
+  const { messages, model, animate } = await req.json();
 
   // Get the last message content as the prompt
   const lastMessage = messages[messages.length - 1];
@@ -38,7 +38,13 @@ export async function POST(req: Request) {
         - Default size should be square (e.g., 512x512) unless the aspect ratio suggests otherwise.
   `;
 
-  const fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
+  let fullPrompt = `Create an SVG representation of the following object/item: "${prompt}"`;
+
+  if (animate) {
+    fullPrompt += `\n\nIMPORTANT: Make this SVG animated using CSS keyframes or SMIL. The animation should be subtle, continuous, and looping. Ensure the animation adds life to the object (e.g., glowing, floating, rotating parts, or color shifts).`;
+  } else {
+    fullPrompt += `\n\nIMPORTANT: Do NOT include any animations, CSS keyframes, or SMIL. The SVG should be completely static.`;
+  }
 
   console.log("[Gemini SVG] streaming", { promptLength: prompt.length, model });
 
