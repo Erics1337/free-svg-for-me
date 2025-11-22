@@ -18,11 +18,14 @@ export async function POST(req: Request) {
     return new Response('Too Many Requests', { status: 429 });
   }
 
-  const { messages, model, animate, transparent } = await req.json();
+  const { messages, prompt: bodyPrompt, model, animate, transparent } = await req.json();
 
-  // Get the last message content as the prompt
-  const lastMessage = messages[messages.length - 1];
-  const prompt = lastMessage.content;
+  // Get the prompt from either messages (chat) or prompt (completion)
+  const prompt = bodyPrompt || (messages?.length > 0 ? messages[messages.length - 1].content : "");
+
+  if (!prompt) {
+    return new Response('Prompt is required', { status: 400 });
+  }
 
   const systemPrompt = `
     You are a world-class expert in Scalable Vector Graphics (SVG) design and coding. 

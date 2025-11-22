@@ -9,15 +9,16 @@ import { InputSection } from './components/InputSection';
 import { SvgPreview } from './components/SvgPreview';
 import { HistorySection } from './components/HistorySection';
 import { SEOContent } from './components/SEOContent';
-import { generateSvgFromPrompt } from './services/geminiService';
 import { GeneratedSvg, GenerationStatus, ApiError } from './types';
 import { AlertCircle } from 'lucide-react';
+import { streamSvgGeneration } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
-  const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
-  const [error, setError] = useState<ApiError | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.0-flash');
+  const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
+  const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [streamedContent, setStreamedContent] = useState<string>('');
   
   // History state with localStorage persistence
   const [history, setHistory] = useState<GeneratedSvg[]>(() => {
@@ -39,24 +40,35 @@ const App: React.FC = () => {
     }
   }, [history]);
 
-  const handleGenerate = async (prompt: string) => {
+  const handleGenerate = async (prompt: string, animate: boolean, transparent: boolean) => {
     setStatus(GenerationStatus.LOADING);
     setError(null);
     setCurrentSvg(null);
+    setStreamedContent('');
 
     try {
-      const svgContent = await generateSvgFromPrompt(prompt, selectedModel);
-      
+      const finalContent = await streamSvgGeneration(
+        prompt, 
+        selectedModel, 
+        animate, 
+        transparent,
+        (partial) => {
+          setStreamedContent(partial);
+        }
+      );
+
       const newSvg: GeneratedSvg = {
         id: crypto.randomUUID(),
-        content: svgContent,
+        content: finalContent,
         prompt: prompt,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        model: selectedModel
       };
       
       setCurrentSvg(newSvg);
       setHistory(prev => [newSvg, ...prev]);
       setStatus(GenerationStatus.SUCCESS);
+      
     } catch (err: any) {
       setStatus(GenerationStatus.ERROR);
       setError({
@@ -70,6 +82,7 @@ const App: React.FC = () => {
     setCurrentSvg(item);
     setStatus(GenerationStatus.SUCCESS);
     setError(null);
+    setStreamedContent(''); // Clear any previous stream
     // Scroll to top for better UX on mobile
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -77,6 +90,15 @@ const App: React.FC = () => {
   const handleDeleteHistory = (id: string) => {
     setHistory(prev => prev.filter(item => item.id !== id));
   };
+
+  // When streaming/loading, we show the temporary streamed content
+  const displaySvg = status === GenerationStatus.LOADING ? {
+    id: 'streaming',
+    content: streamedContent,
+    prompt: 'Generating...',
+    timestamp: Date.now(),
+    model: selectedModel
+  } : currentSvg;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 pt-8">      
@@ -102,9 +124,9 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {status === GenerationStatus.SUCCESS && currentSvg && (
+        {(status === GenerationStatus.SUCCESS || status === GenerationStatus.LOADING) && displaySvg && (
           <SvgPreview 
-            data={currentSvg} 
+            data={displaySvg} 
           />
         )}
         
