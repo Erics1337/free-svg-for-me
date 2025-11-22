@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { streamText, createDataStreamResponse } from 'ai';
 
 export const maxDuration = 60;
 
@@ -57,12 +57,24 @@ export async function POST(req: Request) {
 
   console.log("[Gemini SVG] streaming", { promptLength: prompt.length, model });
 
-  const result = streamText({
-    model: google(model || 'gemini-2.0-flash'),
-    system: systemPrompt,
-    prompt: fullPrompt,
-    temperature: 0.4,
-  });
+  // Use createDataStreamResponse to allow sending immediate data
+  return createDataStreamResponse({
+    execute: (dataStream) => {
+      // Send an initial message to flush the headers and keep the connection alive
+      dataStream.writeData('started');
 
-  return result.toDataStreamResponse();
+      const result = streamText({
+        model: google(model || 'gemini-2.0-flash'),
+        system: systemPrompt,
+        prompt: fullPrompt,
+        temperature: 0.4,
+      });
+
+      result.mergeIntoDataStream(dataStream);
+    },
+    onError: (error) => {
+      console.error("Stream error:", error);
+      return "An error occurred while generating the SVG.";
+    }
+  });
 }
