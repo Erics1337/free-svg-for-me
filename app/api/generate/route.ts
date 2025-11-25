@@ -117,6 +117,17 @@ export async function POST(req: Request) {
             console.log(`[API] Starting generation with ${modelId} (timeout: ${timeoutMs}ms)`);
 
             let hasChunks = false;
+            // Wrap the original writeData to track chunks
+            const originalWriteData = dataStream.writeData;
+            dataStream.writeData = (data) => {
+              hasChunks = true;
+              // Clear timeout on first write
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = undefined;
+              }
+              return originalWriteData.call(dataStream, data);
+            };
 
             const result = streamText({
               model: google(modelId),
@@ -124,32 +135,12 @@ export async function POST(req: Request) {
               prompt: fullPrompt,
               temperature: 0.4,
               abortSignal: controller.signal,
-              onChunk: () => {
-                if (!hasChunks) {
-                  hasChunks = true;
-                  // Clear timeout on first chunk
-                  if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = undefined;
-                  }
-                }
-              }
             });
 
-            // We need to detect the first chunk to clear the timeout.
-            // We can use a transform stream or just hook into the fullStream briefly?
-            // Or simpler: just race the merge promise with the timeout.
-            // But mergeIntoDataStream consumes the stream.
-
-            // Let's stick to manual iteration but fix the type error.
-            // dataStream.write expects a formatted string for the AI stream protocol.
-            // result.mergeIntoDataStream handles this formatting automatically.
-            // To mix manual control and automatic formatting is tricky.
-
-            // Better approach: Use result.mergeIntoDataStream but race it against timeout.
-            // If timeout fires, we abort the controller, which causes mergeIntoDataStream to throw.
-
             await result.mergeIntoDataStream(dataStream);
+
+            // Restore original method (good practice)
+            dataStream.writeData = originalWriteData;
 
             if (!hasChunks) {
               console.warn(`[API] Model ${modelId} returned empty stream.`);
