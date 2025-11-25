@@ -102,7 +102,7 @@ export async function POST(req: Request) {
             system: systemPrompt,
             prompt: fullPrompt,
             temperature: 0.4,
-            abortSignal: req.signal,
+            // abortSignal: req.signal, // Temporarily removed to debug
           });
         } catch (initError) {
           console.error("[API] Failed to initialize streamText:", initError);
@@ -117,8 +117,21 @@ export async function POST(req: Request) {
         }, 5000);
 
         try {
-          await result.mergeIntoDataStream(dataStream);
-          console.log("[API] Stream merged successfully");
+          // Manually iterate to debug
+          let chunkCount = 0;
+          for await (const chunk of result.fullStream) {
+            chunkCount++;
+            // console.log("[API] Chunk received:", chunk.type); // Verbose
+            dataStream.write(chunk);
+          }
+          console.log(`[API] Stream finished. Chunks received: ${chunkCount}`);
+
+          const finishReason = await result.finishReason;
+          console.log("[API] Finish reason:", finishReason);
+
+          const usage = await result.usage;
+          console.log("[API] Usage:", usage);
+
         } catch (streamError) {
           console.error("[API] Stream execution error:", streamError);
           // We can't change the status code here as headers are sent, but we can log it.
