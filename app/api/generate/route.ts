@@ -81,11 +81,19 @@ export async function POST(req: Request) {
 
     // Use createDataStreamResponse to allow sending immediate data
     return createDataStreamResponse({
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Content-Type-Options': 'nosniff',
+      },
       execute: async (dataStream) => {
+        console.log("[API] Stream execution started");
+
         // Send an initial message to flush the headers and keep the connection alive
-        // Some proxies require a certain amount of data to flush the buffer (e.g. 1KB)
-        const padding = ' '.repeat(1024);
+        // Some proxies require a certain amount of data to flush the buffer (e.g. 1KB - 4KB)
+        const padding = ' '.repeat(4096);
         dataStream.writeData('initialized' + padding);
+        console.log("[API] Initial padding sent");
 
         let result;
         try {
@@ -104,17 +112,20 @@ export async function POST(req: Request) {
 
         // Send a keep-alive message every 5 seconds to prevent timeout
         const keepAliveInterval = setInterval(() => {
+          console.log("[API] Sending keep-alive");
           dataStream.writeData('keep-alive');
         }, 5000);
 
         try {
           await result.mergeIntoDataStream(dataStream);
+          console.log("[API] Stream merged successfully");
         } catch (streamError) {
           console.error("[API] Stream execution error:", streamError);
           // We can't change the status code here as headers are sent, but we can log it.
           throw streamError;
         } finally {
           clearInterval(keepAliveInterval);
+          console.log("[API] Stream execution finished");
         }
       },
       onError: (error) => {
