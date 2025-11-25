@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       console.error("[API] GEMINI_API_KEY is missing");
       return new Response(JSON.stringify({ error: 'Configuration Error', details: 'API Key is missing' }), {
-        status: 500,
+        status: 503, // Service Unavailable
         headers: { 'Content-Type': 'application/json' }
       });
     }
@@ -83,15 +83,24 @@ export async function POST(req: Request) {
     return createDataStreamResponse({
       execute: async (dataStream) => {
         // Send an initial message to flush the headers and keep the connection alive
-        dataStream.writeData('initialized');
+        // Some proxies require a certain amount of data to flush the buffer (e.g. 1KB)
+        const padding = ' '.repeat(1024);
+        dataStream.writeData('initialized' + padding);
 
-        const result = streamText({
-          model: google(model || 'gemini-2.0-flash'),
-          system: systemPrompt,
-          prompt: fullPrompt,
-          temperature: 0.4,
-          abortSignal: req.signal,
-        });
+        let result;
+        try {
+          result = streamText({
+            model: google(model || 'gemini-2.0-flash'),
+            system: systemPrompt,
+            prompt: fullPrompt,
+            temperature: 0.4,
+            abortSignal: req.signal,
+          });
+        } catch (initError) {
+          console.error("[API] Failed to initialize streamText:", initError);
+          dataStream.writeData('error: failed to initialize model');
+          return;
+        }
 
         // Send a keep-alive message every 5 seconds to prevent timeout
         const keepAliveInterval = setInterval(() => {
