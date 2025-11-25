@@ -90,52 +90,97 @@ export async function POST(req: Request) {
         console.log("[API] Stream execution started");
 
         // Send an initial message to flush the headers and keep the connection alive
-        // Some proxies require a certain amount of data to flush the buffer (e.g. 1KB - 4KB)
         const padding = ' '.repeat(4096);
         dataStream.writeData('initialized' + padding);
         console.log("[API] Initial padding sent");
 
-        let result;
-        try {
-          result = streamText({
-            model: google(model || 'gemini-2.0-flash'),
-            system: systemPrompt,
-            prompt: fullPrompt,
-            temperature: 0.4,
-            // abortSignal: req.signal, // Temporarily removed to debug
-          });
-        } catch (initError) {
-          console.error("[API] Failed to initialize streamText:", initError);
-          dataStream.writeData('error: failed to initialize model');
-          return;
-        }
-
-        // Send a keep-alive message every 5 seconds to prevent timeout
+        // Keep-alive interval
         const keepAliveInterval = setInterval(() => {
-          console.log("[API] Sending keep-alive");
           dataStream.writeData('keep-alive');
         }, 5000);
 
-        try {
-          // Manually iterate to debug
-          let chunkCount = 0;
-          for await (const chunk of result.fullStream) {
-            chunkCount++;
-            // console.log("[API] Chunk received:", chunk.type); // Verbose
-            dataStream.write(chunk);
+        const generateWithTimeout = async (modelId: string, timeoutMs: number) => {
+          const controller = new AbortController();
+          // Link user cancellation to our controller
+          const abortHandler = () => controller.abort();
+          req.signal.addEventListener('abort', abortHandler);
+
+          let timeoutId: NodeJS.Timeout | undefined;
+          if (timeoutMs > 0) {
+            timeoutId = setTimeout(() => {
+              console.log(`[API] Timeout ${timeoutMs}ms reached for ${modelId}`);
+              controller.abort('TimeoutError');
+            }, timeoutMs);
           }
-          console.log(`[API] Stream finished. Chunks received: ${chunkCount}`);
 
-          const finishReason = await result.finishReason;
-          console.log("[API] Finish reason:", finishReason);
+          try {
+            console.log(`[API] Starting generation with ${modelId} (timeout: ${timeoutMs}ms)`);
+            const result = streamText({
+              model: google(modelId),
+              system: systemPrompt,
+              prompt: fullPrompt,
+              temperature: 0.4,
+              abortSignal: controller.signal,
+            });
 
-          const usage = await result.usage;
-          console.log("[API] Usage:", usage);
+            // We need to detect the first chunk to clear the timeout.
+            // We can use a transform stream or just hook into the fullStream briefly?
+            // Or simpler: just race the merge promise with the timeout.
+            // But mergeIntoDataStream consumes the stream.
 
-        } catch (streamError) {
-          console.error("[API] Stream execution error:", streamError);
-          // We can't change the status code here as headers are sent, but we can log it.
-          throw streamError;
+            // Let's stick to manual iteration but fix the type error.
+            // dataStream.write expects a formatted string for the AI stream protocol.
+            // result.mergeIntoDataStream handles this formatting automatically.
+            // To mix manual control and automatic formatting is tricky.
+
+            // Better approach: Use result.mergeIntoDataStream but race it against timeout.
+            // If timeout fires, we abort the controller, which causes mergeIntoDataStream to throw.
+
+            await result.mergeIntoDataStream(dataStream);
+
+            // If we get here, it finished successfully.
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = undefined;
+            }
+            console.log(`[API] Finished ${modelId}`);
+
+          } catch (error: any) {
+            console.error(`[API] Error with ${modelId}:`, error);
+            throw error;
+          } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            req.signal.removeEventListener('abort', abortHandler);
+          }
+        };
+
+        try {
+          const primaryModel = model || 'gemini-2.0-flash';
+          // Only apply timeout if it's the Pro model
+          const isPro = primaryModel.includes('pro');
+
+          // Try primary model with 15s timeout if Pro
+          await generateWithTimeout(primaryModel, isPro ? 15000 : 0);
+
+        } catch (error: any) {
+          // Check if it was our timeout or a user abort
+          const isTimeout = error === 'TimeoutError' || (error instanceof Error && error.name === 'AbortError' && !req.signal.aborted);
+
+          if (isTimeout && (model || '').includes('pro')) {
+            console.log("[API] Primary model timed out. Switching to fallback: gemini-2.0-flash");
+            // Inform client (optional, might break JSON parsing if strict, but this is a text stream)
+            // dataStream.writeData("\n<!-- Switching to faster model -->\n"); 
+
+            try {
+              await generateWithTimeout('gemini-2.0-flash', 0);
+            } catch (fallbackError) {
+              console.error("[API] Fallback failed:", fallbackError);
+              throw fallbackError;
+            }
+          } else {
+            // If it was a real error or user cancelled, rethrow
+            throw error;
+          }
         } finally {
           clearInterval(keepAliveInterval);
           console.log("[API] Stream execution finished");
