@@ -176,11 +176,12 @@ export async function POST(req: Request) {
           await generateWithTimeout(primaryModel, isPro ? 15000 : 0);
 
         } catch (error: any) {
-          // Check if it was our timeout or a user abort
+          // Check if it was our timeout, a user abort, or an empty stream
           const isTimeout = error === 'TimeoutError' || (error instanceof Error && error.name === 'AbortError' && !req.signal.aborted);
+          const isEmptyStream = error instanceof Error && error.message === 'EmptyStreamError';
 
-          if (isTimeout && (model || '').includes('pro')) {
-            console.log("[API] Primary model timed out. Switching to fallback: gemini-2.0-flash");
+          if ((isTimeout || isEmptyStream) && (model || '').includes('pro')) {
+            console.log(`[API] Primary model failed (${isTimeout ? 'timeout' : 'empty stream'}). Switching to fallback: gemini-2.0-flash`);
             // Inform client (optional, might break JSON parsing if strict, but this is a text stream)
             // dataStream.writeData("\n<!-- Switching to faster model -->\n"); 
 
