@@ -115,12 +115,25 @@ export async function POST(req: Request) {
 
           try {
             console.log(`[API] Starting generation with ${modelId} (timeout: ${timeoutMs}ms)`);
+
+            let hasChunks = false;
+
             const result = streamText({
               model: google(modelId),
               system: systemPrompt,
               prompt: fullPrompt,
               temperature: 0.4,
               abortSignal: controller.signal,
+              onChunk: () => {
+                if (!hasChunks) {
+                  hasChunks = true;
+                  // Clear timeout on first chunk
+                  if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = undefined;
+                  }
+                }
+              }
             });
 
             // We need to detect the first chunk to clear the timeout.
@@ -138,11 +151,11 @@ export async function POST(req: Request) {
 
             await result.mergeIntoDataStream(dataStream);
 
-            // If we get here, it finished successfully.
-            if (timeoutId) {
-              clearTimeout(timeoutId);
-              timeoutId = undefined;
+            if (!hasChunks) {
+              console.warn(`[API] Model ${modelId} returned empty stream.`);
+              throw new Error("EmptyStreamError");
             }
+
             console.log(`[API] Finished ${modelId}`);
 
           } catch (error: any) {
