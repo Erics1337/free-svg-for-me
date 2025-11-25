@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
   // Use createDataStreamResponse to allow sending immediate data
   return createDataStreamResponse({
-    execute: (dataStream) => {
+    execute: async (dataStream) => {
       // Send an initial message to flush the headers and keep the connection alive
       dataStream.writeData('started');
 
@@ -68,9 +68,20 @@ export async function POST(req: Request) {
         system: systemPrompt,
         prompt: fullPrompt,
         temperature: 0.4,
+        abortSignal: req.signal,
       });
 
-      result.mergeIntoDataStream(dataStream);
+      // Send a keep-alive message every 5 seconds to prevent timeout
+      // This sends an empty text part which keeps the connection active without affecting the content
+      const keepAliveInterval = setInterval(() => {
+        dataStream.writeData('');
+      }, 5000);
+
+      try {
+        await result.mergeIntoDataStream(dataStream);
+      } finally {
+        clearInterval(keepAliveInterval);
+      }
     },
     onError: (error) => {
       console.error("Stream error:", error);
