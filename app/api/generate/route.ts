@@ -117,17 +117,6 @@ export async function POST(req: Request) {
             console.log(`[API] Starting generation with ${modelId} (timeout: ${timeoutMs}ms)`);
 
             let hasChunks = false;
-            // Wrap the original writeData to track chunks
-            const originalWriteData = dataStream.writeData;
-            dataStream.writeData = (data) => {
-              hasChunks = true;
-              // Clear timeout on first write
-              if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = undefined;
-              }
-              return originalWriteData.call(dataStream, data);
-            };
 
             const result = streamText({
               model: google(modelId),
@@ -135,12 +124,19 @@ export async function POST(req: Request) {
               prompt: fullPrompt,
               temperature: 0.4,
               abortSignal: controller.signal,
+              onChunk: () => {
+                if (!hasChunks) {
+                  hasChunks = true;
+                  // Clear timeout on first chunk
+                  if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = undefined;
+                  }
+                }
+              }
             });
 
             await result.mergeIntoDataStream(dataStream);
-
-            // Restore original method (good practice)
-            dataStream.writeData = originalWriteData;
 
             if (!hasChunks) {
               console.warn(`[API] Model ${modelId} returned empty stream.`);
@@ -180,7 +176,8 @@ export async function POST(req: Request) {
               await generateWithTimeout('gemini-2.0-flash', 0);
             } catch (fallbackError) {
               console.error("[API] Fallback failed:", fallbackError);
-              throw fallbackError;
+              // Last resort: write an error message to the stream so it doesn't timeout
+              dataStream.writeData('Error: Failed to generate SVG with both models.');
             }
           } else {
             // If it was a real error or user cancelled, rethrow
