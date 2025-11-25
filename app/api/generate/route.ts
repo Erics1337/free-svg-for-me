@@ -83,9 +83,7 @@ export async function POST(req: Request) {
     return createDataStreamResponse({
       execute: async (dataStream) => {
         // Send an initial message to flush the headers and keep the connection alive
-        // Note: writeData writes a raw string. The client needs to handle this or ignore it if it expects JSON.
-        // For ai sdk, it's safer to just start streaming.
-        // dataStream.writeData('started'); 
+        dataStream.writeData('initialized');
 
         const result = streamText({
           model: google(model || 'gemini-2.0-flash'),
@@ -96,9 +94,8 @@ export async function POST(req: Request) {
         });
 
         // Send a keep-alive message every 5 seconds to prevent timeout
-        // Using a comment or whitespace might be safer if the client parses JSON/text
         const keepAliveInterval = setInterval(() => {
-          // dataStream.writeData(' '); // Send a space as keep-alive
+          dataStream.writeData('keep-alive');
         }, 5000);
 
         try {
