@@ -21,11 +21,14 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
     let posthog: PostHog | null = null;
 
     if (posthogApiKey) {
+        console.log("Initializing PostHog with host:", posthogHost);
         posthog = new PostHog(posthogApiKey, {
             host: posthogHost,
             flushAt: 1,
             flushInterval: 0
         });
+    } else {
+        console.log("PostHog API Key not found");
     }
 
     // Set headers for SSE
@@ -176,9 +179,16 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             }
 
             // Capture analytics after stream is done
+            // Capture analytics after stream is done
             if (posthog) {
                 try {
-                    const usage = await result.usage; // Wait for usage to be available
+                    let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+                    try {
+                        usage = await result.usage; // Wait for usage to be available
+                    } catch (e) {
+                        console.warn("Failed to get usage stats", e);
+                    }
+
                     const duration = (Date.now() - startTime) / 1000;
 
                     console.log("Capturing PostHog event", { modelId, duration, tokens: usage.totalTokens });
@@ -242,11 +252,35 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             } catch (fallbackError) {
                 console.error("Fallback failed", fallbackError);
                 dataStreamWriter.writeData('Error: Failed to generate SVG with both models.');
+
+                if (posthog) {
+                    posthog.capture({
+                        distinctId: 'lambda-generator',
+                        event: '$ai_generation_error',
+                        properties: {
+                            error: 'Fallback failed',
+                            details: String(fallbackError)
+                        }
+                    });
+                    await posthog.flush();
+                }
             }
         } else {
             // If it was a real error or user cancelled, we should probably output it
             console.error("Generation failed", error);
             dataStreamWriter.writeData(`Error: Generation failed: ${error.message}`);
+
+            if (posthog) {
+                posthog.capture({
+                    distinctId: 'lambda-generator',
+                    event: '$ai_generation_error',
+                    properties: {
+                        error: 'Generation failed',
+                        details: String(error)
+                    }
+                });
+                await posthog.flush();
+            }
         }
     } finally {
         clearInterval(keepAliveInterval);
