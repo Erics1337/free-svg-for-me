@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .next
 .env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.zip
