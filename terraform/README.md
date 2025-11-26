@@ -40,7 +40,7 @@ To connect your Next.js application to the Lambda function, you need to set the 
 ### Local Development
 Add this to your `.env` file:
 ```bash
-LAMBDA_FUNCTION_URL=https://<your-function-url>.lambda-url.us-east-1.on.aws/
+NEXT_PUBLIC_LAMBDA_FUNCTION_URL=https://<your-function-url>.lambda-url.us-east-1.on.aws/
 ```
 *(You can get this URL from the `terraform apply` output)*
 
@@ -48,7 +48,7 @@ LAMBDA_FUNCTION_URL=https://<your-function-url>.lambda-url.us-east-1.on.aws/
 1.  Go to the **AWS Amplify Console**.
 2.  Navigate to **App settings** -> **Environment variables**.
 3.  Add:
-    - Key: `LAMBDA_FUNCTION_URL`
+    - Key: `NEXT_PUBLIC_LAMBDA_FUNCTION_URL`
     - Value: `https://<your-function-url>.lambda-url.us-east-1.on.aws/`
 
 ## 4. Rotating the API Key

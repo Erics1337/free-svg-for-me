@@ -29,8 +29,12 @@ export const SvgGenerator: React.FC = () => {
   const [history, setHistory] = useState<GeneratedSvg[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
+  // Use the Lambda URL directly to bypass Next.js serverless timeouts (30s)
+  // We use a public env var or fallback to the known deployed URL
+  const LAMBDA_URL = process.env.NEXT_PUBLIC_LAMBDA_FUNCTION_URL || "https://mcvufgsro4ha4raizlfmzspvvq0xqfgz.lambda-url.us-east-1.on.aws/";
+
   const { messages, append, isLoading, error: streamError } = useChat({
-    api: '/api/generate',
+    api: LAMBDA_URL,
     onFinish: (message) => {
       const completion = message.content;
       // Clean up the SVG content
