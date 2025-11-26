@@ -53,6 +53,7 @@ export async function POST(req: Request) {
                                     $ai_output_tokens: usage?.completionTokens || 0,
                                     $ai_total_tokens: usage?.totalTokens || 0,
                                     $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
+                                    $ai_trace_id: crypto.randomUUID(),
                                 }
                             })
                         });
