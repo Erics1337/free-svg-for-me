@@ -148,17 +148,14 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 }
             });
 
-            // Merge into our adapter
-            // Manually pipe the data stream since mergeIntoDataStream is not available
+            // Stream the result
             const stream = result.toDataStream();
             const reader = stream.getReader();
-            const decoder = new TextDecoder();
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                dataStreamWriter.writeData(chunk);
+                responseStream.write(value);
             }
 
             // Restore
