@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 import { PostHog } from 'posthog-node';
+import { withTracing } from '@posthog/ai';
 
 // AWS Lambda Streaming Handler wrapper
 declare const awslambda: {
@@ -150,9 +151,22 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 originalWrite(data);
             };
 
-            const startTime = Date.now();
+            // Wrap the model with PostHog tracing if PostHog is initialized
+            let wrappedModel = google(modelId);
+            if (posthog) {
+                wrappedModel = withTracing(wrappedModel, posthog, {
+                    posthogDistinctId: 'lambda-generator',
+                    posthogProperties: {
+                        animate,
+                        transparent,
+                        $ai_provider: 'google',
+                        $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta'
+                    }
+                });
+            }
+
             const result = await streamText({
-                model: google(modelId),
+                model: wrappedModel,
                 system: systemPrompt,
                 prompt: fullPrompt,
                 temperature: 0.4,
@@ -176,45 +190,6 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 if (done) break;
                 fullText += value;
                 responseStream.write(value);
-            }
-
-            // Capture analytics after stream is done
-            // Capture analytics after stream is done
-            if (posthog) {
-                try {
-                    let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
-                    try {
-                        usage = await result.usage; // Wait for usage to be available
-                    } catch (e) {
-                        console.warn("Failed to get usage stats", e);
-                    }
-
-                    const duration = (Date.now() - startTime) / 1000;
-
-                    console.log("Capturing PostHog event", { modelId, duration, tokens: usage.totalTokens });
-
-                    posthog.capture({
-                        distinctId: 'lambda-generator',
-                        event: '$ai_generation',
-                        properties: {
-                            $ai_model: modelId,
-                            $ai_provider: 'google',
-                            $ai_input: fullPrompt,
-                            $ai_output: fullText,
-                            $ai_latency: duration,
-                            $ai_input_tokens: usage.promptTokens,
-                            $ai_output_tokens: usage.completionTokens,
-                            $ai_total_tokens: usage.totalTokens,
-                            $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
-                            animate,
-                            transparent
-                        }
-                    });
-                    // Force flush to ensure it sends before lambda freezes
-                    await posthog.flush();
-                } catch (phError) {
-                    console.error("Failed to capture PostHog analytics", phError);
-                }
             }
 
             // Restore
@@ -252,35 +227,11 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             } catch (fallbackError) {
                 console.error("Fallback failed", fallbackError);
                 dataStreamWriter.writeData('Error: Failed to generate SVG with both models.');
-
-                if (posthog) {
-                    posthog.capture({
-                        distinctId: 'lambda-generator',
-                        event: '$ai_generation_error',
-                        properties: {
-                            error: 'Fallback failed',
-                            details: String(fallbackError)
-                        }
-                    });
-                    await posthog.flush();
-                }
             }
         } else {
             // If it was a real error or user cancelled, we should probably output it
             console.error("Generation failed", error);
             dataStreamWriter.writeData(`Error: Generation failed: ${error.message}`);
-
-            if (posthog) {
-                posthog.capture({
-                    distinctId: 'lambda-generator',
-                    event: '$ai_generation_error',
-                    properties: {
-                        error: 'Generation failed',
-                        details: String(error)
-                    }
-                });
-                await posthog.flush();
-            }
         }
     } finally {
         clearInterval(keepAliveInterval);
