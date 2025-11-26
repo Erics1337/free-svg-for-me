@@ -1,5 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
+import { PostHog } from 'posthog-node';
 
 // AWS Lambda Streaming Handler wrapper
 declare const awslambda: {
@@ -13,6 +14,19 @@ declare const awslambda: {
 
 export const handler = awslambda.streamifyResponse(async (event: any, responseStream: any, _context: any) => {
     console.log("Request received");
+
+    // Initialize PostHog
+    const posthogApiKey = process.env.POSTHOG_API_KEY;
+    const posthogHost = process.env.POSTHOG_HOST || 'https://us.i.posthog.com';
+    let posthog: PostHog | null = null;
+
+    if (posthogApiKey) {
+        posthog = new PostHog(posthogApiKey, {
+            host: posthogHost,
+            flushAt: 1,
+            flushInterval: 0
+        });
+    }
 
     // Set headers for SSE
     const metadata = {
@@ -133,6 +147,7 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 originalWrite(data);
             };
 
+            const startTime = Date.now();
             const result = await streamText({
                 model: google(modelId),
                 system: systemPrompt,
@@ -144,6 +159,28 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                     if (timeoutId) {
                         clearTimeout(timeoutId);
                         timeoutId = undefined;
+                    }
+                },
+                onFinish: ({ text, usage }) => {
+                    if (posthog) {
+                        const duration = (Date.now() - startTime) / 1000;
+                        posthog.capture({
+                            distinctId: 'lambda-generator', // You might want to pass a user ID from the client if available
+                            event: '$ai_generation',
+                            properties: {
+                                $ai_model: modelId,
+                                $ai_provider: 'google',
+                                $ai_input: fullPrompt,
+                                $ai_output: text,
+                                $ai_latency: duration,
+                                $ai_input_tokens: usage.promptTokens,
+                                $ai_output_tokens: usage.completionTokens,
+                                $ai_total_tokens: usage.totalTokens,
+                                $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
+                                animate,
+                                transparent
+                            }
+                        });
                     }
                 }
             });
@@ -202,5 +239,8 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
     } finally {
         clearInterval(keepAliveInterval);
         responseStream.end();
+        if (posthog) {
+            await posthog.shutdown();
+        }
     }
 });

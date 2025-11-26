@@ -7,6 +7,16 @@ variable "gemini_api_key" {
   sensitive = true
 }
 
+variable "posthog_api_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "posthog_host" {
+  type    = string
+  default = "https://us.i.posthog.com"
+}
+
 # 1. Zip the built Lambda code
 data "archive_file" "lambda_zip" {
   type        = "zip"
@@ -27,7 +37,9 @@ resource "aws_lambda_function" "svg_generator" {
 
   environment {
     variables = {
-      GEMINI_API_KEY = var.gemini_api_key
+      GEMINI_API_KEY  = var.gemini_api_key
+      POSTHOG_API_KEY = var.posthog_api_key
+      POSTHOG_HOST    = var.posthog_host
     }
   }
 }

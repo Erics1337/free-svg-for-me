@@ -8,11 +8,12 @@
     },
     "dependencies": {
         "@ai-sdk/google": "^0.0.55",
-        "ai": "^3.4.33"
+        "ai": "^3.4.33",
+        "posthog-node": "^5.14.0"
     },
     "devDependencies": {
-        "esbuild": "^0.24.0",
         "@types/aws-lambda": "^8.10.145",
-        "@types/node": "^20.0.0"
+        "@types/node": "^20.0.0",
+        "esbuild": "^0.24.0"
     }
 }
