@@ -160,39 +160,51 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                         clearTimeout(timeoutId);
                         timeoutId = undefined;
                     }
-                },
-                onFinish: ({ text, usage }) => {
-                    if (posthog) {
-                        const duration = (Date.now() - startTime) / 1000;
-                        posthog.capture({
-                            distinctId: 'lambda-generator', // You might want to pass a user ID from the client if available
-                            event: '$ai_generation',
-                            properties: {
-                                $ai_model: modelId,
-                                $ai_provider: 'google',
-                                $ai_input: fullPrompt,
-                                $ai_output: text,
-                                $ai_latency: duration,
-                                $ai_input_tokens: usage.promptTokens,
-                                $ai_output_tokens: usage.completionTokens,
-                                $ai_total_tokens: usage.totalTokens,
-                                $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
-                                animate,
-                                transparent
-                            }
-                        });
-                    }
                 }
             });
 
             // Stream the result
             const stream = result.textStream;
             const reader = stream.getReader();
+            let fullText = '';
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+                fullText += value;
                 responseStream.write(value);
+            }
+
+            // Capture analytics after stream is done
+            if (posthog) {
+                try {
+                    const usage = await result.usage; // Wait for usage to be available
+                    const duration = (Date.now() - startTime) / 1000;
+
+                    console.log("Capturing PostHog event", { modelId, duration, tokens: usage.totalTokens });
+
+                    posthog.capture({
+                        distinctId: 'lambda-generator',
+                        event: '$ai_generation',
+                        properties: {
+                            $ai_model: modelId,
+                            $ai_provider: 'google',
+                            $ai_input: fullPrompt,
+                            $ai_output: fullText,
+                            $ai_latency: duration,
+                            $ai_input_tokens: usage.promptTokens,
+                            $ai_output_tokens: usage.completionTokens,
+                            $ai_total_tokens: usage.totalTokens,
+                            $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
+                            animate,
+                            transparent
+                        }
+                    });
+                    // Force flush to ensure it sends before lambda freezes
+                    await posthog.flush();
+                } catch (phError) {
+                    console.error("Failed to capture PostHog analytics", phError);
+                }
             }
 
             // Restore
