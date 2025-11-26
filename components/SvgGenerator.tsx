@@ -34,7 +34,7 @@ export const SvgGenerator: React.FC = () => {
 
   // Use the Lambda URL directly to bypass Next.js serverless timeouts (30s)
   // We use a public env var or fallback to the known deployed URL
-  const LAMBDA_URL = process.env.NEXT_PUBLIC_LAMBDA_FUNCTION_URL || "https://mcvufgsro4ha4raizlfmzspvvq0xqfgz.lambda-url.us-east-1.on.aws/";
+  const LAMBDA_URL = process.env.NEXT_PUBLIC_LAMBDA_FUNCTION_URL || "https://h6klx2wgfbzwpi3yvnl34xj4pi0fxtqv.lambda-url.us-east-1.on.aws/";
 
   const handleGenerate = async (prompt: string, animate: boolean, transparent: boolean) => {
     setStatus(GenerationStatus.LOADING);

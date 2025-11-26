@@ -72,7 +72,11 @@ resource "aws_lambda_function_url" "svg_generator_url" {
   invoke_mode        = "RESPONSE_STREAM" # Enable streaming!
   
   cors {
-    allow_origins = ["*"] # Restrict this to your domain in production
+    allow_origins = [
+      "https://www.freesvgforme.com",
+      "https://freesvgforme.com",
+      "http://localhost:3000"
+    ]
     allow_methods = ["POST"]
     allow_headers = ["content-type"]
     max_age       = 3600
