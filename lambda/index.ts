@@ -1,7 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 import { PostHog } from 'posthog-node';
-import { withTracing } from '@posthog/ai';
+import crypto from 'crypto';
 
 // AWS Lambda Streaming Handler wrapper
 declare const awslambda: {
@@ -42,13 +42,6 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
         }
     };
 
-    // Write metadata to the stream (this is how Lambda Function URLs handle headers in streaming mode)
-    // Note: The exact method depends on the runtime interface, but typically responseStream is a writable.
-    // For Function URLs with streamifyResponse, we use a specific helper or just write.
-    // Actually, awslambda.streamifyResponse handles the http wrapping.
-    // We can use responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
-    // But since we don't have the types, let's try to set it via the object if possible or just rely on default.
-    // Better:
     responseStream = awslambda.HttpResponseStream.from(responseStream, metadata);
 
     let body;
@@ -151,22 +144,9 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 originalWrite(data);
             };
 
-            // Wrap the model with PostHog tracing if PostHog is initialized
-            let wrappedModel = google(modelId);
-            if (posthog) {
-                wrappedModel = withTracing(wrappedModel, posthog, {
-                    posthogDistinctId: 'lambda-generator',
-                    posthogProperties: {
-                        animate,
-                        transparent,
-                        $ai_provider: 'google',
-                        $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta'
-                    }
-                });
-            }
-
+            const startTime = Date.now();
             const result = await streamText({
-                model: wrappedModel,
+                model: google(modelId),
                 system: systemPrompt,
                 prompt: fullPrompt,
                 temperature: 0.4,
@@ -190,6 +170,51 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 if (done) break;
                 fullText += value;
                 responseStream.write(value);
+            }
+
+            // Capture analytics after stream is done
+            if (posthog) {
+                try {
+                    let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+                    try {
+                        const usageResult = await result.usage; // Wait for usage to be available
+                        usage = {
+                            promptTokens: (usageResult as any).promptTokens ?? 0,
+                            completionTokens: (usageResult as any).completionTokens ?? 0,
+                            totalTokens: usageResult.totalTokens ?? 0
+                        };
+                    } catch (e) {
+                        console.warn("Failed to get usage stats", e);
+                    }
+
+                    const duration = (Date.now() - startTime) / 1000;
+                    const traceId = crypto.randomUUID();
+
+                    console.log("Capturing PostHog event", { modelId, duration, tokens: usage.totalTokens, traceId });
+
+                    posthog.capture({
+                        distinctId: 'lambda-generator',
+                        event: '$ai_generation',
+                        properties: {
+                            $ai_model: modelId,
+                            $ai_provider: 'google',
+                            $ai_input: messages || [{ role: 'user', content: fullPrompt }],
+                            $ai_output_choices: [{ role: 'assistant', content: fullText }],
+                            $ai_latency: duration,
+                            $ai_input_tokens: usage.promptTokens,
+                            $ai_output_tokens: usage.completionTokens,
+                            $ai_total_tokens: usage.totalTokens,
+                            $ai_base_url: 'https://generativelanguage.googleapis.com/v1beta',
+                            $ai_trace_id: traceId,
+                            animate,
+                            transparent
+                        }
+                    });
+                    // Force flush to ensure it sends before lambda freezes
+                    await posthog.flush();
+                } catch (phError) {
+                    console.error("Failed to capture PostHog analytics", phError);
+                }
             }
 
             // Restore
@@ -227,11 +252,35 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             } catch (fallbackError) {
                 console.error("Fallback failed", fallbackError);
                 dataStreamWriter.writeData('Error: Failed to generate SVG with both models.');
+
+                if (posthog) {
+                    posthog.capture({
+                        distinctId: 'lambda-generator',
+                        event: '$ai_generation_error',
+                        properties: {
+                            error: 'Fallback failed',
+                            details: String(fallbackError)
+                        }
+                    });
+                    await posthog.flush();
+                }
             }
         } else {
             // If it was a real error or user cancelled, we should probably output it
             console.error("Generation failed", error);
             dataStreamWriter.writeData(`Error: Generation failed: ${error.message}`);
+
+            if (posthog) {
+                posthog.capture({
+                    distinctId: 'lambda-generator',
+                    event: '$ai_generation_error',
+                    properties: {
+                        error: 'Generation failed',
+                        details: String(error)
+                    }
+                });
+                await posthog.flush();
+            }
         }
     } finally {
         clearInterval(keepAliveInterval);
