@@ -149,7 +149,7 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             });
 
             // Stream the result
-            const stream = result.toDataStream();
+            const stream = result.textStream;
             const reader = stream.getReader();
 
             while (true) {

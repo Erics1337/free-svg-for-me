@@ -7,7 +7,8 @@ import { HistorySection } from './HistorySection';
 import { BuyMeCoffee } from './BuyMeCoffee';
 import { GeneratedSvg, GenerationStatus, ApiError } from '../types';
 import { AlertCircle } from 'lucide-react';
-import { useChat } from 'ai/react';
+import { useChat } from 'ai/react'; // Keep for types if needed, or remove if unused. Actually remove it.
+// import { useChat } from 'ai/react';
 
 export const SvgGenerator: React.FC = () => {
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
@@ -29,126 +30,114 @@ export const SvgGenerator: React.FC = () => {
   const [history, setHistory] = useState<GeneratedSvg[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // Use the Lambda URL directly to bypass Next.js serverless timeouts (30s)
   // We use a public env var or fallback to the known deployed URL
   const LAMBDA_URL = process.env.NEXT_PUBLIC_LAMBDA_FUNCTION_URL || "https://mcvufgsro4ha4raizlfmzspvvq0xqfgz.lambda-url.us-east-1.on.aws/";
 
-  const { messages, append, isLoading, error: streamError } = useChat({
-    api: LAMBDA_URL,
-    onFinish: (message) => {
-      const completion = message.content;
-      // Clean up the SVG content
-      let cleanSvg = completion;
-      const svgMatch = completion.match(/<svg[\s\S]*?<\/svg>/i);
+  const handleGenerate = async (prompt: string, animate: boolean, transparent: boolean) => {
+    setStatus(GenerationStatus.LOADING);
+    setIsLoading(true);
+    setError(null);
+    setCurrentSvg(null);
+
+    try {
+      const response = await fetch(LAMBDA_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model: selectedModel,
+          animate,
+          transparent
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP ${response.status}`);
+      }
+
+      if (!response.body) {
+        throw new Error("No response body received");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+
+        // Filter out our custom keep-alive and initialization messages
+        // "initialized" is followed by 4096 spaces
+        let cleanChunk = chunk.replace(/initialized\s{4096}/g, '');
+        cleanChunk = cleanChunk.replace(/keep-alive/g, '');
+
+        if (cleanChunk) {
+          fullContent += cleanChunk;
+
+          // Update preview with whatever we have so far
+          // We try to find the start of the SVG to make it look better
+          const svgStartIndex = fullContent.indexOf('<svg');
+          const displayContent = svgStartIndex >= 0 ? fullContent.substring(svgStartIndex) : fullContent;
+
+          setCurrentSvg({
+            id: 'streaming',
+            content: displayContent,
+            prompt: 'Generating...',
+            timestamp: Date.now(),
+            model: selectedModel
+          });
+        }
+      }
+
+      // Final processing
+      let cleanSvg = fullContent;
+      const svgMatch = fullContent.match(/<svg[\s\S]*?<\/svg>/i);
       if (svgMatch && svgMatch[0]) {
         cleanSvg = svgMatch[0];
       } else {
-        cleanSvg = completion.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+        cleanSvg = fullContent.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
       }
 
-      // Extract prompt from the message role (not ideal, but we can't easily get the user prompt here without state)
-      // Better approach: Use the last user message from the messages array, but onFinish only gives the assistant message.
-      // We'll rely on the fact that we just appended a user message.
-      // Actually, let's just use a generic prompt or try to find it.
-      // For now, let's assume the user prompt is available via other means or just don't save it here?
-      // Wait, we can just save it when we trigger generation? No, we want to save on success.
-      // Let's look at the messages array.
-    },
-    onError: (err) => {
+      if (cleanSvg.includes('<svg')) {
+        const newSvg: GeneratedSvg = {
+          id: Date.now().toString(),
+          content: cleanSvg,
+          prompt: prompt,
+          timestamp: Date.now(),
+          model: selectedModel
+        };
+
+        setCurrentSvg(newSvg);
+        setHistory(prev => {
+          // Prevent duplicates
+          if (prev.some(item => item.id === newSvg.id)) return prev;
+          return [newSvg, ...prev];
+        });
+        setStatus(GenerationStatus.SUCCESS);
+      } else {
+        throw new Error("No valid SVG found in the response.");
+      }
+
+    } catch (err: any) {
+      console.error("Generation Error:", err);
       setStatus(GenerationStatus.ERROR);
       setError({
         message: "Generation Failed",
         details: err.message || "An unexpected error occurred."
       });
+    } finally {
+      setIsLoading(false);
     }
-  });
-
-  // We need to handle onFinish differently because useChat doesn't pass the prompt.
-  // We can use a useEffect to watch for the finish.
-
-  // Actually, let's simplify. We can just use the `messages` array to render the SVG if it's the last message.
-  // But we want to maintain our `currentSvg` state for the preview.
-
-  // Let's stick to the plan: useChat.
-
-  const handleGenerate = async (prompt: string, animate: boolean, transparent: boolean) => {
-    setStatus(GenerationStatus.LOADING);
-    setError(null);
-    setCurrentSvg(null);
-
-    // Trigger the chat
-    await append({
-      role: 'user',
-      content: prompt,
-    }, {
-      body: { model: selectedModel, animate, transparent }
-    });
   };
-
-  // Effect to handle completion and history saving
-  useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        const completion = lastMessage.content;
-
-        let cleanSvg = completion;
-        const svgMatch = completion.match(/<svg[\s\S]*?<\/svg>/i);
-        if (svgMatch && svgMatch[0]) {
-          cleanSvg = svgMatch[0];
-        } else {
-          cleanSvg = completion.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
-        }
-
-        // If we are loading, we just want to show the preview
-        if (isLoading) {
-          // Only update if it looks like it might be an SVG (starts with <svg)
-          // or if we want to show the raw text streaming
-          if (cleanSvg.includes('<svg') || cleanSvg.length > 10) {
-            setCurrentSvg({
-              id: 'streaming',
-              content: cleanSvg,
-              prompt: 'Generating...',
-              timestamp: Date.now(),
-              model: selectedModel
-            });
-          }
-        } else {
-          // Finished loading, save to history
-          if (cleanSvg.includes('<svg')) {
-            // Find the prompt (the message before this one)
-            const promptMessage = messages[messages.length - 2];
-            const prompt = promptMessage?.content || "Generated SVG";
-
-            const newSvg: GeneratedSvg = {
-              id: lastMessage.id, // Use message ID for stability
-              content: cleanSvg,
-              prompt: prompt,
-              timestamp: Date.now(),
-              model: selectedModel
-            };
-
-            // Only set if different ID or if we were in streaming mode
-            if (currentSvg?.id !== newSvg.id || currentSvg?.id === 'streaming') {
-              setCurrentSvg(newSvg);
-              setHistory(prev => {
-                // Prevent duplicates in history
-                if (prev.some(item => item.id === newSvg.id)) return prev;
-                return [newSvg, ...prev];
-              });
-              setStatus(GenerationStatus.SUCCESS);
-            }
-          }
-        }
-      }
-    }
-  }, [isLoading, messages, selectedModel]); // Depend on isLoading to trigger when finished
-
-  useEffect(() => {
-    if (isLoading) {
-      setStatus(GenerationStatus.LOADING);
-    }
-  }, [isLoading]);
 
   useEffect(() => {
     try {
