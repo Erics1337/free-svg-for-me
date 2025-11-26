@@ -139,24 +139,26 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
                 prompt: fullPrompt,
                 temperature: 0.4,
                 abortSignal: controller.signal,
-            });
-
-            // Pipe the stream to the response
-            const response = result.toDataStreamResponse();
-            if (response.body) {
-                const reader = response.body.getReader();
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
+                onChunk: () => {
                     hasChunks = true;
                     if (timeoutId) {
                         clearTimeout(timeoutId);
                         timeoutId = undefined;
                     }
-
-                    responseStream.write(value);
                 }
+            });
+
+            // Merge into our adapter
+            // Manually pipe the data stream since mergeIntoDataStream is not available
+            const stream = result.toDataStream();
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                dataStreamWriter.writeData(chunk);
             }
 
             // Restore
