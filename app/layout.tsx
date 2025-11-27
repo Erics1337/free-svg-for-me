@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { CSPostHogProvider } from './providers';
+import { Footer } from '@/components/Footer';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-zinc-950 antialiased`}>
         <CSPostHogProvider>
           {children}
+          <Footer />
         </CSPostHogProvider>
       </body>
     </html>
