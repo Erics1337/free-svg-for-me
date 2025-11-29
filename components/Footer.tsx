@@ -14,7 +14,7 @@ export function Footer() {
                     <Link href="/" className="hover:text-zinc-200 transition-colors">
                         Home
                     </Link>
-                    <Link href="/about" className="hover:text-zinc-200 transition-colors">
+                    {/* <Link href="/about" className="hover:text-zinc-200 transition-colors">
                         About
                     </Link>
                     <Link href="/contact" className="hover:text-zinc-200 transition-colors">
@@ -25,7 +25,7 @@ export function Footer() {
                     </Link>
                     <Link href="/terms" className="hover:text-zinc-200 transition-colors">
                         Terms of Service
-                    </Link>
+                    </Link> */}
                 </nav>
             </div>
         </footer>

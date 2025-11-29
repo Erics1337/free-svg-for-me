@@ -27,6 +27,7 @@ export async function POST(req: Request) {
         const result = await streamObject({
             model: google('gemini-2.0-flash'),
             temperature: 1.0,
+            abortSignal: req.signal,
             schema: z.object({
                 suggestions: z.array(z.string()).length(4),
             }),
