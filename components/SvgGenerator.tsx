@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { InputSection } from './InputSection';
 import { SvgPreview } from './SvgPreview';
 import { HistorySection } from './HistorySection';
-import { BuyMeCoffee } from './BuyMeCoffee';
+
 import { GeneratedSvg, GenerationStatus, ApiError } from '../types';
 import { AlertCircle } from 'lucide-react';
 import { useChat } from 'ai/react'; // Keep for types if needed, or remove if unused. Actually remove it.
@@ -176,10 +176,7 @@ export const SvgGenerator: React.FC = () => {
 
   return (
     <main className="pb-20 pt-8">
-      {/* Header with Coffee Button */}
-      <div className="absolute top-4 right-4 z-10">
-        <BuyMeCoffee username="erics1337" />
-      </div>
+
 
       <InputSection
         onGenerate={handleGenerate}
