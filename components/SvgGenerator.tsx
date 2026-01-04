@@ -10,6 +10,8 @@ import { AlertCircle } from 'lucide-react';
 import { useChat } from 'ai/react'; // Keep for types if needed, or remove if unused. Actually remove it.
 // import { useChat } from 'ai/react';
 
+import { AdUnit } from './AdUnit';
+
 export const SvgGenerator: React.FC = () => {
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
@@ -218,6 +220,14 @@ export const SvgGenerator: React.FC = () => {
           <p className="text-zinc-600 text-sm">Generated artwork will appear here</p>
         </div>
       )}
+
+      {/* AdSense Unit - Tool Bottom */}
+      <div className="max-w-4xl mx-auto mt-12 mb-8 px-4">
+        <AdUnit 
+          slot="3342167915" // FreeSVG Tool Bottom
+          className="min-h-[100px] w-full flex justify-center bg-zinc-900/30 rounded-lg overflow-hidden"
+        />
+      </div>
 
       {historyLoaded && (
         <HistorySection
