@@ -19,7 +19,7 @@ interface AdUnitProps {
 
 export const AdUnit: React.FC<AdUnitProps> = ({
   slot,
-  style = { display: 'block' },
+  style = { display: 'block', width: '100%' },
   format = 'auto',
   responsive = true,
   className = '',
@@ -53,10 +53,10 @@ export const AdUnit: React.FC<AdUnitProps> = ({
   }
 
   return (
-    <div className={`ad-container ${className}`}>
+    <div className={`ad-container ${className}`} style={{ width: '100%' }}>
       <ins
         className="adsbygoogle"
-        style={style}
+        style={{ ...style, display: 'block', width: '100%' }}
         data-ad-client="ca-pub-9433983047069695"
         data-ad-slot={slot}
         data-ad-format={format}
