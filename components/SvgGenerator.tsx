@@ -19,9 +19,9 @@ export const SvgGenerator: React.FC = () => {
 
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('vectorcraft_model') || 'gemini-2.0-flash';
+      return localStorage.getItem('vectorcraft_model') || 'gemini-3-pro-preview';
     }
-    return 'gemini-2.0-flash';
+    return 'gemini-3-pro-preview';
   });
 
   useEffect(() => {
