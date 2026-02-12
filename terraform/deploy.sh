@@ -31,8 +31,8 @@ else
   echo "Warning: ../.env file not found"
 fi
 
-# Set the AWS profile to the correct user
-export AWS_PROFILE=erics1337
+# Set the AWS profile to the correct user (using default)
+# export AWS_PROFILE=erics1337
 
 # Run terraform apply, passing any arguments (like -auto-approve)
 terraform apply "$@"

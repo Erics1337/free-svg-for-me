@@ -1,65 +1,91 @@
 # Serverless SVG Generation with AWS Lambda
 
-This project uses a standalone AWS Lambda function to handle long-running SVG generation tasks, bypassing the 30-second timeout limits of standard serverless functions (like those in Vercel or AWS Amplify).
+This project uses standalone AWS Lambda functions to handle long-running SVG generation tasks, bypassing the 30-second timeout limits of standard serverless functions (like those in Vercel or AWS Amplify).
 
 ## Architecture
 
-1.  **Client**: Sends a request to the Next.js API route (`/api/generate`).
-2.  **Next.js API**: Acts as a proxy. It forwards the request to the AWS Lambda Function URL.
-3.  **AWS Lambda**: Runs the Gemini AI generation logic. It has a 5-minute timeout and supports streaming.
-4.  **Response**: The Lambda streams the generated SVG code back to the Next.js API, which streams it back to the client.
+We currently run two parallel Lambda functions for testing and migration purposes:
+
+1.  **Node.js (Legacy/Production)**: `gemini-svg-generator`
+    - Runtime: Node.js 20.x
+    - Features: Response streaming (faster time-to-first-byte).
+    - Path: `typescript_lambda/`
+2.  **Python (New/Beta)**: `gemini-svg-generator-python`
+    - Runtime: Python 3.13
+    - Features: threading-based timeouts, full PostHog analytics, standard JSON response.
+    - Path: `lambda_python/`
+
+The frontend connects to **one** of these via the `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` environment variable.
 
 ## 1. Prerequisites
 
 - [Terraform installed](https://developer.hashicorp.com/terraform/downloads)
 - AWS CLI configured with credentials (`aws configure`)
 - Node.js and npm installed
+- Python 3.13 installed
 
-## 2. Deploying Updates to the Lambda
+## 2. Deploying Updates
 
-If you modify the code in `lambda/index.ts` (e.g., changing prompts or models), you must redeploy the Lambda function.
+### Node.js Lambda (Original)
 
-1.  **Build the Code**:
-    ```bash
-    cd lambda
-    npm install
-    npm run build
-    ```
+To update the TypeScript/Node.js function:
 
-2.  **Deploy with Terraform**:
-    ```bash
-    cd ../terraform
-    terraform apply
-    ```
-    *You will be prompted for your `gemini_api_key`.*
+```bash
+cd typescript_lambda
+npm install
+npm run build
+cd ../terraform
+./deploy.sh
+```
+
+### Python Lambda (New)
+
+To update the Python function (code or dependencies):
+
+```bash
+cd lambda_python
+./deploy.sh
+```
+
+_Note: `deploy.sh` handles installing Linux-compatible dependencies._
+
+### Infrastructure Changes (Terraform)
+
+To update IAM roles, timeouts, or environment variables for **both** functions:
+
+```bash
+cd terraform
+./deploy.sh
+```
 
 ## 3. Environment Variables
 
-To connect your Next.js application to the Lambda function, you need to set the `LAMBDA_FUNCTION_URL` environment variable.
+To switch your frontend between the Node.js and Python backends, update the `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` environment variable.
 
 ### Local Development
-Add this to your `.env` file:
+
+Update your `.env` file:
+
 ```bash
-NEXT_PUBLIC_LAMBDA_FUNCTION_URL=https://<your-function-url>.lambda-url.us-east-1.on.aws/
+# Node.js (Streaming)
+NEXT_PUBLIC_LAMBDA_FUNCTION_URL=https://<node-url>.lambda-url.us-east-1.on.aws/
+
+# OR
+
+# Python (JSON)
+NEXT_PUBLIC_LAMBDA_FUNCTION_URL=https://<python-url>.lambda-url.us-east-1.on.aws/
 ```
-*(You can get this URL from the `terraform apply` output)*
 
 ### Production (AWS Amplify)
+
 1.  Go to the **AWS Amplify Console**.
 2.  Navigate to **App settings** -> **Environment variables**.
-3.  Add:
-    - Key: `NEXT_PUBLIC_LAMBDA_FUNCTION_URL`
-    - Value: `https://<your-function-url>.lambda-url.us-east-1.on.aws/`
+3.  Update `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` to the desired endpoint.
 
 ## 4. Rotating the API Key
 
 The `GEMINI_API_KEY` is stored securely in the Lambda function's environment variables. To rotate it:
 
-1.  Run `terraform apply` in the `terraform/` directory.
+1.  Run `./deploy.sh` in the `terraform/` directory.
 2.  Enter the **new** API key when prompted.
-3.  Terraform will update the Lambda configuration with the new key.
-
-## Troubleshooting
-
-- **Timeout Errors**: The Lambda is configured with a 5-minute timeout. If generation takes longer, check the AWS CloudWatch logs for the `gemini-svg-generator` function.
-- **CORS Issues**: The Function URL is configured to allow all origins (`*`). If you see CORS errors, check the `main.tf` configuration.
+3.  Terraform will update the configuration for **both** Lambdas.

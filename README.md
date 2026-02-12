@@ -14,6 +14,7 @@ No signups. No paywalls. Just free vector art for your projects.
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
+- **Backend:** AWS Lambda (Python 3.13 & Node.js 20)
 - **Styling:** Tailwind CSS
 - **AI:** Google Gemini Pro Vision
 - **Icons:** Lucide React
@@ -41,4 +42,5 @@ No signups. No paywalls. Just free vector art for your projects.
    ```
 
 ---
-*Built by [Eric Swanson](https://github.com/Erics1337)*
+
+_Built by [Eric Swanson](https://github.com/Erics1337)_
