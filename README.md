@@ -16,7 +16,7 @@ No signups. No paywalls. Just free vector art for your projects.
 - **Framework:** Next.js 14 (App Router)
 - **Backend:** AWS Lambda (Python 3.13 & Node.js 20)
 - **Styling:** Tailwind CSS
-- **AI:** Google Gemini Pro Vision
+- **AI:** Google Gemini (gemini-2.0-flash)
 - **Icons:** Lucide React
 
 ## Running Locally

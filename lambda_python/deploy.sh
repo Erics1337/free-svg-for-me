@@ -11,6 +11,7 @@ REGION="us-east-1"
 RUNTIME="python3.13"
 HANDLER="lambda_function.handler"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
 
 echo "=== Deploying Python Lambda: $FUNCTION_NAME ==="
 

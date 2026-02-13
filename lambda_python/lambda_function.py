@@ -122,6 +122,12 @@ def _generate_with_timeout(model_id, full_prompt, timeout_seconds=30):
         # Timeout reached — signal the thread to stop
         logger.warning(f"Timeout ({timeout_seconds}s) reached for {model_id}")
         stop_event.set()
+        # Give the thread a moment to see the stop event and exit cleanly
+        gen_thread.join(timeout=2)
+        
+        if gen_thread.is_alive():
+            logger.warning(f"Thread for {model_id} did not exit cleanly after timeout signal")
+
         raise TimeoutError(f"Generation timed out after {timeout_seconds}s for {model_id}")
 
     # Thread completed — check result
@@ -218,8 +224,9 @@ def handler(event, context):
 
     # Determine model
     primary_model = model_id or 'gemini-2.0-flash'
+    used_model = primary_model
     is_pro = 'pro' in primary_model
-    timeout = 60 if is_pro else 120
+    timeout = 120 if is_pro else 60
 
     start_time = time.time()
     generated_text = None
@@ -227,6 +234,7 @@ def handler(event, context):
     try:
         # Try primary model with timeout
         generated_text = _generate_with_timeout(primary_model, full_prompt, timeout_seconds=timeout)
+        used_model = primary_model
 
     except (TimeoutError, RuntimeError) as e:
         logger.warning(f"Primary model failed: {e}")
@@ -236,8 +244,9 @@ def handler(event, context):
             logger.info("Switching to fallback: gemini-2.0-flash")
             try:
                 generated_text = _generate_with_timeout(
-                    'gemini-2.0-flash', full_prompt, timeout_seconds=120
+                    'gemini-2.0-flash', full_prompt, timeout_seconds=60
                 )
+                used_model = 'gemini-2.0-flash'
             except Exception as fallback_error:
                 logger.error(f"Fallback failed: {fallback_error}")
 
@@ -253,7 +262,7 @@ def handler(event, context):
                     'statusCode': 500,
                     'headers': cors_headers,
                     'body': json.dumps({
-                        'error': f'Failed to generate SVG with both models: {fallback_error}'
+                        'error': 'An internal error occurred while generating the SVG'
                     })
                 }
         else:
@@ -268,7 +277,7 @@ def handler(event, context):
             return {
                 'statusCode': 500,
                 'headers': cors_headers,
-                'body': json.dumps({'error': f'Generation failed: {e}'})
+                'body': json.dumps({'error': 'An internal error occurred while generating the SVG'})
             }
 
     # Capture analytics
@@ -281,7 +290,7 @@ def handler(event, context):
             'lambda-generator',
             '$ai_generation',
             {
-                '$ai_model': primary_model,
+                '$ai_model': used_model,
                 '$ai_provider': 'google',
                 '$ai_input': messages or [{'role': 'user', 'content': full_prompt}],
                 '$ai_output_choices': [{'role': 'assistant', 'content': generated_text}],

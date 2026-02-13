@@ -71,24 +71,24 @@ resource "aws_lambda_function_url" "svg_generator_url" {
 # 2. Python Lambda (Python 3.13) - NEW
 # ==============================================================================
 
-# Zip the Python code
-data "archive_file" "lambda_zip_py" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda_python"
-  excludes    = ["package", "deployment.zip", "deploy.sh", "__pycache__"]
-  output_path = "${path.module}/lambda_function_payload_py.zip"
-}
+# Zip the Python code - We use the prebuilt zip from deploy.sh to include dependencies
+# data "archive_file" "lambda_zip_py" {
+#   type        = "zip"
+#   source_dir  = "${path.module}/../lambda_python"
+#   excludes    = ["package", "deployment.zip", "deploy.sh", "__pycache__"]
+#   output_path = "${path.module}/lambda_function_payload_py.zip"
+# }
 
 # Python Lambda Function
 resource "aws_lambda_function" "svg_generator_python" {
-  filename      = data.archive_file.lambda_zip_py.output_path
+  filename      = "${path.module}/../lambda_python/deployment.zip"
   function_name = "gemini-svg-generator-python"
   role          = aws_iam_role.lambda_exec.arn
   handler       = "lambda_function.handler"
   runtime       = "python3.13"
   timeout       = 300 # 5 minutes
   memory_size   = 1024
-  source_code_hash = data.archive_file.lambda_zip_py.output_base64sha256
+  source_code_hash = filebase64sha256("${path.module}/../lambda_python/deployment.zip")
 
   environment {
     variables = {

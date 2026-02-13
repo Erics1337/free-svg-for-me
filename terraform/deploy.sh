@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=$PATH:/usr/local/bin:/opt/homebrew/bin
 
 # Check if .env exists
 if [ -f "../.env" ]; then
