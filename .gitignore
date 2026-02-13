@@ -30,3 +30,7 @@ dist-ssr
 *.tfstate
 *.tfstate.backup
 *.zip
+
+lambda_python/package
+lambda_python/deployment.zip
+lambda_python/__pycache__/

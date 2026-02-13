@@ -14,9 +14,24 @@ No signups. No paywalls. Just free vector art for your projects.
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router)
+- **Backend:** AWS Lambda (Python 3.13 & Node.js 20)
 - **Styling:** Tailwind CSS
-- **AI:** Google Gemini Pro Vision
+- **AI:** Google Gemini (gemini-2.0-flash)
 - **Icons:** Lucide React
+
+## Backend Architecture (Migration)
+
+We currently run two parallel Lambda functions for testing and migration purposes:
+
+| Feature              | Node.js (Legacy)                          | Python (New)                     |
+| :------------------- | :---------------------------------------- | :------------------------------- |
+| **Function Name**    | `gemini-svg-generator`                    | `gemini-svg-generator-python`    |
+| **Runtime**          | Node.js 20.x                              | Python 3.13                      |
+| **Response Type**    | Streaming (`awslambda.streamifyResponse`) | Standard JSON (`{"svg": "..."}`) |
+| **Timeout Handling** | Basic (Platform Native)                   | Robust (Threading + Fallback)    |
+| **Analytics**        | PostHog (npm)                             | PostHog (python)                 |
+
+To switch your frontend between the Node.js and Python backends, update the `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` environment variable.
 
 ## Running Locally
 
@@ -41,4 +56,5 @@ No signups. No paywalls. Just free vector art for your projects.
    ```
 
 ---
-*Built by [Eric Swanson](https://github.com/Erics1337)*
+
+_Built by [Eric Swanson](https://github.com/Erics1337)_
