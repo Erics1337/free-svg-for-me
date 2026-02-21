@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { CSPostHogProvider } from './providers';
 import { Footer } from '@/components/Footer';
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Free SVG For Me | AI Vector Art & Icon Generator",
@@ -40,7 +37,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className={`${inter.className} bg-zinc-950 antialiased`}>
+      <body className="bg-zinc-950 antialiased">
         <CSPostHogProvider>
           {children}
           <Footer />
