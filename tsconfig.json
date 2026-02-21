@@ -45,6 +45,8 @@
   ],
   "exclude": [
     "node_modules",
-    "lambda"
+    "lambda",
+    "typescript_lambda",
+    "lambda_python"
   ]
 }
