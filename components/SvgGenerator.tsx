@@ -13,10 +13,6 @@ import { useChat } from 'ai/react'; // Keep for types if needed, or remove if un
 import { AdUnit } from './AdUnit';
 
 export const SvgGenerator: React.FC = () => {
-  const LEGACY_MODEL_MAP: Record<string, string> = {
-    'gemini-3-pro-preview': 'gemini-3.1-pro',
-  };
-
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -25,7 +21,7 @@ export const SvgGenerator: React.FC = () => {
     if (typeof window !== 'undefined') {
       const savedModel = localStorage.getItem('vectorcraft_model');
       if (!savedModel) return 'gemini-3.1-pro';
-      return LEGACY_MODEL_MAP[savedModel] || savedModel;
+      return savedModel;
     }
     return 'gemini-3.1-pro';
   });
