@@ -169,11 +169,11 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
                     </button>
                     <button
                       type="button"
-                      onClick={() => onModelChange('gemini-3-pro-preview')}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                      onClick={() => onModelChange('gemini-3.1-pro')}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-3.1-pro' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
-                      <span>Gemini 3.0 Pro</span>
-                      {selectedModel === 'gemini-3-pro-preview' && <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]" />}
+                      <span>Gemini 3.1 Pro</span>
+                      {selectedModel === 'gemini-3.1-pro' && <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]" />}
                     </button>
 
                     <div className="h-px bg-zinc-800 my-2" />
