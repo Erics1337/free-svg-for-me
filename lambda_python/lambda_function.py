@@ -159,12 +159,10 @@ def handler(event, context):
     """
     logger.info("Request received")
 
-    # CORS headers for Function URL
-    cors_headers = {
+    # Function URL CORS is configured in AWS. Do not emit CORS headers here,
+    # or browsers will see duplicated Access-Control-Allow-Origin values.
+    response_headers = {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "content-type",
     }
 
     # Handle CORS preflight
@@ -172,7 +170,7 @@ def handler(event, context):
     if http_method == 'OPTIONS':
         return {
             'statusCode': 200,
-            'headers': cors_headers,
+            'headers': response_headers,
             'body': ''
         }
 
@@ -183,7 +181,7 @@ def handler(event, context):
         logger.error(f"Failed to parse body: {e}")
         return {
             'statusCode': 400,
-            'headers': cors_headers,
+            'headers': response_headers,
             'body': json.dumps({'error': 'Invalid JSON body'})
         }
 
@@ -201,7 +199,7 @@ def handler(event, context):
     if not prompt:
         return {
             'statusCode': 400,
-            'headers': cors_headers,
+            'headers': response_headers,
             'body': json.dumps({'error': 'Prompt is required'})
         }
 
@@ -210,7 +208,7 @@ def handler(event, context):
     if not api_key:
         return {
             'statusCode': 500,
-            'headers': cors_headers,
+            'headers': response_headers,
             'body': json.dumps({'error': 'API Key missing'})
         }
 
@@ -260,7 +258,7 @@ def handler(event, context):
 
                 return {
                     'statusCode': 500,
-                    'headers': cors_headers,
+                    'headers': response_headers,
                     'body': json.dumps({
                         'error': 'An internal error occurred while generating the SVG'
                     })
@@ -276,7 +274,7 @@ def handler(event, context):
 
             return {
                 'statusCode': 500,
-                'headers': cors_headers,
+                'headers': response_headers,
                 'body': json.dumps({'error': 'An internal error occurred while generating the SVG'})
             }
 
@@ -309,9 +307,6 @@ def handler(event, context):
     # Return the generated SVG
     return {
         'statusCode': 200,
-        'headers': {
-            **cors_headers,
-            'Content-Type': 'text/plain',
-        },
+        'headers': {'Content-Type': 'text/plain'},
         'body': generated_text
     }
