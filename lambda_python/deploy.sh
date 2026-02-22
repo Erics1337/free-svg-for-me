@@ -35,9 +35,11 @@ echo "[3/5] Creating deployment package..."
 cd "$SCRIPT_DIR/package"
 zip -r9 "$SCRIPT_DIR/deployment.zip" . -x "*.pyc" "__pycache__/*" > /dev/null
 
-# Add the lambda function itself
+# Add the Python app code
 cd "$SCRIPT_DIR"
 zip -g "$SCRIPT_DIR/deployment.zip" lambda_function.py > /dev/null
+zip -g "$SCRIPT_DIR/deployment.zip" streaming_app.py > /dev/null
+zip -g "$SCRIPT_DIR/deployment.zip" run.sh > /dev/null
 
 echo "    Package size: $(du -h deployment.zip | cut -f1)"
 

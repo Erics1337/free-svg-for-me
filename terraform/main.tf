@@ -84,17 +84,23 @@ resource "aws_lambda_function" "svg_generator_python" {
   filename      = "${path.module}/../lambda_python/deployment.zip"
   function_name = "gemini-svg-generator-python"
   role          = aws_iam_role.lambda_exec.arn
-  handler       = "lambda_function.handler"
+  handler       = "run.sh"
   runtime       = "python3.13"
   timeout       = 300 # 5 minutes
   memory_size   = 1024
   source_code_hash = filebase64sha256("${path.module}/../lambda_python/deployment.zip")
+  layers = [
+    "arn:aws:lambda:us-east-1:753240598075:layer:LambdaAdapterLayerX86:26"
+  ]
 
   environment {
     variables = {
-      GEMINI_API_KEY  = var.gemini_api_key
-      POSTHOG_API_KEY = var.posthog_api_key
-      POSTHOG_HOST    = var.posthog_host
+      GEMINI_API_KEY           = var.gemini_api_key
+      POSTHOG_API_KEY          = var.posthog_api_key
+      POSTHOG_HOST             = var.posthog_host
+      AWS_LAMBDA_EXEC_WRAPPER  = "/opt/bootstrap"
+      AWS_LWA_INVOKE_MODE      = "response_stream"
+      PORT                     = "8080"
     }
   }
 }
@@ -103,10 +109,8 @@ resource "aws_lambda_function" "svg_generator_python" {
 resource "aws_lambda_function_url" "svg_generator_python_url" {
   function_name      = aws_lambda_function.svg_generator_python.function_name
   authorization_type = "NONE"
-  # Python managed runtime doesn't support RESPONSE_STREAM natively in same way
-  # It defaults to BUFFERED, but we can try RESPONSE_STREAM if using custom adapter
-  # For now, let's stick to default (BUFFERED) as implemented in handler
-  invoke_mode        = "BUFFERED" 
+  # Streaming is enabled via Lambda Web Adapter on the Python function.
+  invoke_mode        = "RESPONSE_STREAM" 
   
   cors {
     allow_origins = [

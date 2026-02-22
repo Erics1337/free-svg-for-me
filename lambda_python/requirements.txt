@@ -1,2 +1,4 @@
 google-generativeai
 posthog
+fastapi
+uvicorn
