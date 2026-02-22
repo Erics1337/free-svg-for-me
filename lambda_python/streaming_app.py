@@ -15,6 +15,12 @@ from lambda_function import SYSTEM_PROMPT, _build_prompt, _init_posthog, _model_
 
 logger = logging.getLogger(__name__)
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+PHASE_MARKER_PREFIX = "[[PHASE:"
+PHASE_MARKER_SUFFIX = "]]"
+
+
+def _phase_marker(phase: str) -> str:
+    return f"{PHASE_MARKER_PREFIX}{phase}{PHASE_MARKER_SUFFIX}"
 
 
 def _stream_generate_attempt(model_id: str, full_prompt: str, first_chunk_timeout_s: int) -> Iterator[str]:
@@ -71,7 +77,9 @@ def _stream_generate_attempt(model_id: str, full_prompt: str, first_chunk_timeou
             if kind == "chunk":
                 text = payload or ""
                 if text:
-                    saw_chunk = True
+                    if not saw_chunk:
+                        saw_chunk = True
+                        yield _phase_marker("streaming")
                     full_text_parts.append(text)
                     yield text
                 continue
@@ -147,8 +155,10 @@ async def generate_svg(request: Request):
 
         # Flush proxy/browser buffers early.
         yield "initialized" + (" " * 4096)
+        yield _phase_marker("queued")
 
         def _run_attempt(model_name: str, timeout_s: int) -> str:
+            yield _phase_marker("thinking")
             yield_marker = _model_marker(model_name)
             yield yield_marker
             result_text = yield from _stream_generate_attempt(model_name, full_prompt, timeout_s)
@@ -166,6 +176,7 @@ async def generate_svg(request: Request):
 
             if should_fallback:
                 try:
+                    yield _phase_marker("fallback")
                     used_model = "gemini-2.0-flash"
                     generated_text = yield from _run_attempt(used_model, 20)
                 except Exception as fallback_exc:
@@ -205,6 +216,7 @@ async def generate_svg(request: Request):
                 return
 
         # Capture analytics after successful stream
+        yield _phase_marker("finalizing")
         if posthog and generated_text:
             try:
                 duration = time.time() - started_at

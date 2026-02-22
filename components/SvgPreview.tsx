@@ -74,7 +74,7 @@ export const SvgPreview: React.FC<SvgPreviewProps> = ({ data }) => {
             <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px] z-10 transition-all duration-500">
               <div className="bg-zinc-900/90 border border-white/10 px-5 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-in fade-in zoom-in duration-300">
                 <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
-                <span className="text-sm font-medium text-zinc-200">Rendering Vector Art...</span>
+                <span className="text-sm font-medium text-zinc-200">{data.phase || 'Rendering Vector Art...'}</span>
               </div>
             </div>
           )}

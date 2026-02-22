@@ -14,6 +14,7 @@ import { AdUnit } from './AdUnit';
 
 export const SvgGenerator: React.FC = () => {
   const MODEL_MARKER_REGEX = /\[\[MODEL:([^\]]+)\]\]/g;
+  const PHASE_MARKER_REGEX = /\[\[PHASE:([^\]]+)\]\]/g;
   const LEGACY_MODEL_MAP: Record<string, string> = {
     'gemini-3.1-pro': 'gemini-3.1-pro-preview',
   };
@@ -41,6 +42,14 @@ export const SvgGenerator: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  const phaseLabelMap: Record<string, string> = {
+    queued: 'Preparing request...',
+    thinking: 'Model thinking...',
+    streaming: 'Streaming SVG draft...',
+    fallback: 'Retrying with fallback model...',
+    finalizing: 'Finalizing SVG...',
+  };
+
   // Use the Lambda URL directly to bypass Next.js serverless timeouts (30s)
   // We use a public env var or fallback to the known deployed URL
   const LAMBDA_URL = process.env.NEXT_PUBLIC_LAMBDA_FUNCTION_URL || "https://h6klx2wgfbzwpi3yvnl34xj4pi0fxtqv.lambda-url.us-east-1.on.aws/";
@@ -49,7 +58,14 @@ export const SvgGenerator: React.FC = () => {
     setStatus(GenerationStatus.LOADING);
     setIsLoading(true);
     setError(null);
-    setCurrentSvg(null);
+    setCurrentSvg({
+      id: 'streaming',
+      content: '',
+      prompt: 'Generating...',
+      timestamp: Date.now(),
+      model: selectedModel,
+      phase: 'Preparing request...',
+    });
 
     try {
       const response = await fetch(LAMBDA_URL, {
@@ -78,6 +94,7 @@ export const SvgGenerator: React.FC = () => {
       const decoder = new TextDecoder();
       let fullContent = '';
       let usedModel = selectedModel;
+      let streamPhase = 'Preparing request...';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -93,11 +110,17 @@ export const SvgGenerator: React.FC = () => {
         if (cleanChunk) {
           fullContent += cleanChunk;
           let detectedModel: string | null = null;
+          let detectedPhase: string | null = null;
           fullContent = fullContent.replace(MODEL_MARKER_REGEX, (_match, modelId: string) => {
             detectedModel = modelId;
             return '';
           });
+          fullContent = fullContent.replace(PHASE_MARKER_REGEX, (_match, phaseId: string) => {
+            detectedPhase = phaseLabelMap[phaseId] || phaseId;
+            return '';
+          });
           if (detectedModel) usedModel = detectedModel;
+          if (detectedPhase) streamPhase = detectedPhase;
 
           // Update preview with whatever we have so far
           // We try to find the start of the SVG to make it look better
@@ -109,13 +132,16 @@ export const SvgGenerator: React.FC = () => {
             content: displayContent,
             prompt: 'Generating...',
             timestamp: Date.now(),
-            model: usedModel
+            model: usedModel,
+            phase: streamPhase,
           });
         }
       }
 
       // Final processing
       fullContent = fullContent.replace(MODEL_MARKER_REGEX, '');
+      fullContent = fullContent.replace(PHASE_MARKER_REGEX, '');
+      setCurrentSvg(prev => prev && prev.id === 'streaming' ? { ...prev, phase: 'Finalizing SVG...' } : prev);
       const streamedError = fullContent.trim();
       if (streamedError.startsWith('Error:')) {
         throw new Error(streamedError);
@@ -134,7 +160,8 @@ export const SvgGenerator: React.FC = () => {
           content: cleanSvg,
           prompt: prompt,
           timestamp: Date.now(),
-          model: usedModel
+          model: usedModel,
+          phase: undefined,
         };
 
         setCurrentSvg(newSvg);

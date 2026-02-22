@@ -16,6 +16,7 @@ export interface GeneratedSvg {
   prompt: string;
   timestamp: number;
   model?: string;
+  phase?: string;
 }
 
 export interface ApiError {
