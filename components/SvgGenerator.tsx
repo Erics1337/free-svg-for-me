@@ -116,6 +116,10 @@ export const SvgGenerator: React.FC = () => {
 
       // Final processing
       fullContent = fullContent.replace(MODEL_MARKER_REGEX, '');
+      const streamedError = fullContent.trim();
+      if (streamedError.startsWith('Error:')) {
+        throw new Error(streamedError);
+      }
       let cleanSvg = fullContent;
       const svgMatch = fullContent.match(/<svg[\s\S]*?<\/svg>/i);
       if (svgMatch && svgMatch[0]) {

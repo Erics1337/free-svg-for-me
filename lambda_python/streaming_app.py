@@ -135,7 +135,10 @@ async def generate_svg(request: Request):
     used_model = primary_model
     is_pro = "pro" in primary_model
     explicit_model_requested = bool(model_id)
-    first_chunk_timeout_s = 90 if (is_pro and animate) else (60 if is_pro else 20)
+    # Pro models (especially with animation) can take a long time before the
+    # first token, even when total generation succeeds. Keep the connection
+    # alive while waiting instead of failing too early.
+    first_chunk_timeout_s = 240 if (is_pro and animate) else (180 if is_pro else 30)
     started_at = time.time()
 
     def event_stream() -> Iterator[str]:
