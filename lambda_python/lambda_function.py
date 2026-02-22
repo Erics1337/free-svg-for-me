@@ -231,7 +231,8 @@ def handler(event, context):
     primary_model = model_id or 'gemini-2.0-flash'
     used_model = primary_model
     is_pro = 'pro' in primary_model
-    timeout = 120 if is_pro else 60
+    explicit_model_requested = bool(model_id)
+    timeout = 240 if (is_pro and animate) else (180 if is_pro else 60)
 
     start_time = time.time()
     generated_text = None
@@ -246,7 +247,7 @@ def handler(event, context):
         error_text = str(e)
         is_timeout_like = isinstance(e, TimeoutError) or 'timed out' in error_text.lower()
         is_empty_like = 'empty response' in error_text.lower() or 'no result from generation thread' in error_text.lower()
-        should_fallback = is_pro and (is_timeout_like or is_empty_like)
+        should_fallback = (not explicit_model_requested) and is_pro and (is_timeout_like or is_empty_like)
 
         # Only fallback for transient failures (timeouts/empty responses), not
         # invalid model IDs, auth/quota errors, etc.
@@ -292,6 +293,7 @@ def handler(event, context):
                     'requestedModel': primary_model,
                     'details': str(e),
                     'fallbackAttempted': False,
+                    'transientFailure': (is_timeout_like or is_empty_like),
                 })
             }
 
