@@ -13,6 +13,7 @@ import { useChat } from 'ai/react'; // Keep for types if needed, or remove if un
 import { AdUnit } from './AdUnit';
 
 export const SvgGenerator: React.FC = () => {
+  const MODEL_MARKER_REGEX = /\[\[MODEL:([^\]]+)\]\]/g;
   const LEGACY_MODEL_MAP: Record<string, string> = {
     'gemini-3.1-pro': 'gemini-3.1-pro-preview',
   };
@@ -76,6 +77,7 @@ export const SvgGenerator: React.FC = () => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let usedModel = selectedModel;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -90,6 +92,12 @@ export const SvgGenerator: React.FC = () => {
 
         if (cleanChunk) {
           fullContent += cleanChunk;
+          let detectedModel: string | null = null;
+          fullContent = fullContent.replace(MODEL_MARKER_REGEX, (_match, modelId: string) => {
+            detectedModel = modelId;
+            return '';
+          });
+          if (detectedModel) usedModel = detectedModel;
 
           // Update preview with whatever we have so far
           // We try to find the start of the SVG to make it look better
@@ -101,12 +109,13 @@ export const SvgGenerator: React.FC = () => {
             content: displayContent,
             prompt: 'Generating...',
             timestamp: Date.now(),
-            model: selectedModel
+            model: usedModel
           });
         }
       }
 
       // Final processing
+      fullContent = fullContent.replace(MODEL_MARKER_REGEX, '');
       let cleanSvg = fullContent;
       const svgMatch = fullContent.match(/<svg[\s\S]*?<\/svg>/i);
       if (svgMatch && svgMatch[0]) {
@@ -121,7 +130,7 @@ export const SvgGenerator: React.FC = () => {
           content: cleanSvg,
           prompt: prompt,
           timestamp: Date.now(),
-          model: selectedModel
+          model: usedModel
         };
 
         setCurrentSvg(newSvg);

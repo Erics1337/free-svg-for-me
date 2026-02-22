@@ -13,6 +13,9 @@ from posthog import Posthog
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+MODEL_MARKER_PREFIX = "[[MODEL:"
+MODEL_MARKER_SUFFIX = "]]"
+
 # System prompt for SVG generation
 SYSTEM_PROMPT = """
 You are a world-class expert in Scalable Vector Graphics (SVG) design and coding. 
@@ -146,6 +149,10 @@ def _generate_with_timeout(model_id, full_prompt, timeout_seconds=30):
     return result
 
 
+def _model_marker(model_id):
+    return f"{MODEL_MARKER_PREFIX}{model_id}{MODEL_MARKER_SUFFIX}"
+
+
 def handler(event, context):
     """
     AWS Lambda handler for SVG generation using Google Gemini.
@@ -236,9 +243,14 @@ def handler(event, context):
 
     except (TimeoutError, RuntimeError) as e:
         logger.warning(f"Primary model failed: {e}")
+        error_text = str(e)
+        is_timeout_like = isinstance(e, TimeoutError) or 'timed out' in error_text.lower()
+        is_empty_like = 'empty response' in error_text.lower() or 'no result from generation thread' in error_text.lower()
+        should_fallback = is_pro and (is_timeout_like or is_empty_like)
 
-        # Fallback to flash model if primary was pro
-        if is_pro:
+        # Only fallback for transient failures (timeouts/empty responses), not
+        # invalid model IDs, auth/quota errors, etc.
+        if should_fallback:
             logger.info("Switching to fallback: gemini-2.0-flash")
             try:
                 generated_text = _generate_with_timeout(
@@ -275,7 +287,12 @@ def handler(event, context):
             return {
                 'statusCode': 500,
                 'headers': response_headers,
-                'body': json.dumps({'error': 'An internal error occurred while generating the SVG'})
+                'body': json.dumps({
+                    'error': 'The requested model failed',
+                    'requestedModel': primary_model,
+                    'details': str(e),
+                    'fallbackAttempted': False,
+                })
             }
 
     # Capture analytics
@@ -308,5 +325,5 @@ def handler(event, context):
     return {
         'statusCode': 200,
         'headers': {'Content-Type': 'text/plain'},
-        'body': generated_text
+        'body': f"{_model_marker(used_model)}{generated_text}"
     }
