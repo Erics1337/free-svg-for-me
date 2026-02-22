@@ -21,8 +21,10 @@ export const SvgPreview: React.FC<SvgPreviewProps> = ({ data }) => {
   }, [data]);
 
   if (!data) return null;
+  const isStreaming = data.id === 'streaming';
 
   const handleDownload = () => {
+    if (isStreaming) return;
     const blob = new Blob([data.content], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -35,6 +37,7 @@ export const SvgPreview: React.FC<SvgPreviewProps> = ({ data }) => {
   };
 
   const handleCopyCode = () => {
+    if (isStreaming) return;
     navigator.clipboard.writeText(data.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -52,15 +55,20 @@ export const SvgPreview: React.FC<SvgPreviewProps> = ({ data }) => {
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
+              disabled={isStreaming}
               onClick={handleCopyCode}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors group relative cursor-pointer"
-              title="Copy SVG Code"
+              className={`p-2 rounded-lg transition-colors group relative ${isStreaming ? 'text-zinc-600 cursor-not-allowed opacity-60' : 'text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer'}`}
+              title={isStreaming ? 'Available after generation completes' : 'Copy SVG Code'}
             >
               {copied ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <Code className="w-5 h-5" />}
             </button>
             <button
+              type="button"
+              disabled={isStreaming}
               onClick={handleDownload}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-900 bg-white rounded-lg hover:bg-zinc-200 transition-colors cursor-pointer"
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${isStreaming ? 'text-zinc-500 bg-zinc-800 cursor-not-allowed opacity-60' : 'text-zinc-900 bg-white hover:bg-zinc-200 cursor-pointer'}`}
+              title={isStreaming ? 'Available after generation completes' : 'Download SVG'}
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Download</span>
