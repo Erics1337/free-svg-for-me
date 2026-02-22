@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 import { CSPostHogProvider } from './providers';
 import { Footer } from '@/components/Footer';
+import { ConsentProvider } from '@/components/ConsentProvider';
+import { ConsentNotice } from '@/components/ConsentNotice';
 
 export const metadata: Metadata = {
   title: "Free SVG For Me | AI Vector Art & Icon Generator",
@@ -31,6 +34,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <Script id="google-consent-mode-default" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = window.gtag || function(){ dataLayer.push(arguments); };
+            window.gtag('consent', 'default', {
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              analytics_storage: 'denied',
+              functionality_storage: 'granted',
+              personalization_storage: 'denied',
+              security_storage: 'granted',
+              wait_for_update: 500
+            });
+            window.gtag('set', 'ads_data_redaction', true);
+            window.gtag('set', 'url_passthrough', true);
+          `}
+        </Script>
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9433983047069695"
@@ -38,10 +59,13 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-zinc-950 antialiased">
-        <CSPostHogProvider>
-          {children}
-          <Footer />
-        </CSPostHogProvider>
+        <ConsentProvider>
+          <CSPostHogProvider>
+            {children}
+            <ConsentNotice />
+            <Footer />
+          </CSPostHogProvider>
+        </ConsentProvider>
       </body>
     </html>
   );

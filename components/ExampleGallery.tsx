@@ -2,8 +2,15 @@ import React from 'react';
 
 export const ExampleGallery: React.FC = () => {
     return (
-        <section className="max-w-6xl mx-auto mt-24 px-6 pb-12">
-            <h2 className="text-2xl font-bold text-zinc-200 mb-8 text-center">Recent AI Generated Examples</h2>
+        <section className="max-w-6xl mx-auto mt-20 px-6 pb-8" aria-labelledby="example-gallery-title">
+            <div className="text-center max-w-2xl mx-auto mb-8">
+                <h2 id="example-gallery-title" className="text-2xl font-bold text-zinc-200">
+                    Example Outputs
+                </h2>
+                <p className="text-sm text-zinc-400 mt-2">
+                    A few sample styles you can generate. Use them as prompt inspiration, then customize colors, shapes, and details.
+                </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
                 {/* Example 1 */}
@@ -15,14 +22,10 @@ export const ExampleGallery: React.FC = () => {
                             <path d="M30 50 L50 70 L70 30" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                    <div className="p-6">
+                    <div className="p-5">
                         <h3 className="font-semibold text-zinc-200 mb-2">Minimal Checkmark Icon</h3>
-                        <p className="text-zinc-400 text-sm mb-4">A clean, scalable checkmark icon perfect for validation states and UI confirmations.</p>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">icon</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">ui</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">minimal</span>
-                        </div>
+                        <p className="text-zinc-400 text-sm">Clean UI icon for check states, confirmations, and action success messages.</p>
+                        <p className="text-xs text-zinc-500 font-mono mt-3">icon • ui • minimal</p>
                     </div>
                 </div>
 
@@ -36,14 +39,10 @@ export const ExampleGallery: React.FC = () => {
                             <circle cx="70" cy="30" r="3" fill="currentColor"/>
                         </svg>
                     </div>
-                    <div className="p-6">
+                    <div className="p-5">
                         <h3 className="font-semibold text-zinc-200 mb-2">Camera Logo Concept</h3>
-                        <p className="text-zinc-400 text-sm mb-4">Modern geometric camera logo inspired by popular social media app icons.</p>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">logo</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">camera</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">geometric</span>
-                        </div>
+                        <p className="text-zinc-400 text-sm">Geometric logo direction for branding concepts, app marks, and social media mockups.</p>
+                        <p className="text-xs text-zinc-500 font-mono mt-3">logo • camera • geometric</p>
                     </div>
                 </div>
 
@@ -57,14 +56,10 @@ export const ExampleGallery: React.FC = () => {
                             <path d="M50 70 L70 70" stroke="currentColor" strokeWidth="4" fill="none" strokeLinecap="round"/>
                         </svg>
                     </div>
-                    <div className="p-6">
+                    <div className="p-5">
                         <h3 className="font-semibold text-zinc-200 mb-2">Mountain Peak Symbol</h3>
-                        <p className="text-zinc-400 text-sm mb-4">Abstract representation of a mountain peak, suitable for outdoor brands.</p>
-                        <div className="flex flex-wrap gap-2">
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">nature</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">abstract</span>
-                            <span className="px-2 py-1 bg-zinc-800 rounded-md text-xs text-zinc-300 font-mono">symbol</span>
-                        </div>
+                        <p className="text-zinc-400 text-sm">Simple outdoor-style symbol for badges, labels, or brand identity explorations.</p>
+                        <p className="text-xs text-zinc-500 font-mono mt-3">nature • abstract • symbol</p>
                     </div>
                 </div>
 

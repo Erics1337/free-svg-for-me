@@ -1,5 +1,7 @@
 import React from 'react';
 
+const LAST_UPDATED = 'February 22, 2026';
+
 export default function TermsPage() {
     return (
         <main className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 pt-24 pb-20">
@@ -7,7 +9,7 @@ export default function TermsPage() {
                 <h1 className="text-3xl font-bold mb-8">Terms of Service</h1>
 
                 <div className="prose prose-invert prose-zinc max-w-none space-y-8">
-                    <p className="text-zinc-400">Last updated: {new Date().toLocaleDateString()}</p>
+                    <p className="text-zinc-400">Last updated: {LAST_UPDATED}</p>
 
                     <section>
                         <h2 className="text-xl font-semibold mb-4 text-zinc-200">1. Acceptance of Terms</h2>

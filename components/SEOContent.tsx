@@ -1,72 +1,60 @@
 import React from 'react';
+import Link from 'next/link';
 
 export const SEOContent: React.FC = () => {
     return (
-        <section className="max-w-4xl mx-auto mt-24 px-6 pb-20 text-zinc-400 space-y-12">
-            {/* Main SEO Article */}
-            <article className="prose prose-invert prose-zinc max-w-none">
-                <h1 className="text-3xl font-bold text-zinc-200 mb-6">
-                    Free SVG Generator: Create Custom Vector Art with AI
-                </h1>
-
-                <div className="space-y-6">
-                    <p>
-                        Welcome to <strong>Free SVG For Me</strong>, the ultimate <em>free SVG generator</em> powered by artificial intelligence.
-                        Whether you're a web developer, designer, or content creator, finding the perfect vector graphic can be a challenge.
-                        Stock sites often charge fees or require attribution, but our tool lets you generate unique, royalty-free SVGs instantly.
+        <section className="max-w-4xl mx-auto mt-14 px-6 pb-20 text-zinc-300" aria-labelledby="home-help-title">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/35 p-6 md:p-7 space-y-6">
+                <div>
+                    <h2 id="home-help-title" className="text-xl md:text-2xl font-bold text-zinc-100 mb-2">
+                        About this tool
+                    </h2>
+                    <p className="text-sm md:text-base text-zinc-400 leading-relaxed">
+                        FreeSVGForMe generates editable SVG code from a text prompt. It works best for icons, symbols, simple logos, and lightweight vector illustrations.
                     </p>
-
-                    <h2 className="text-2xl font-semibold text-zinc-200">How to Generate AI SVGs for Free</h2>
-                    <p>
-                        Our text-to-SVG tool makes it simple to create professional vector assets:
-                    </p>
-                    <ol className="list-decimal pl-5 space-y-2 marker:text-indigo-400">
-                        <li><strong>Describe your idea:</strong> Type a prompt like "flat icon of a rocket ship" or "minimalist cat logo".</li>
-                        <li><strong>Let AI work its magic:</strong> Our advanced generative model interprets your text and writes clean, scalable SVG code.</li>
-                        <li><strong>Download & Use:</strong> Get your <em>custom SVG icon</em> or illustration instantly. No watermarks, no signup.</li>
-                    </ol>
-
-                    <h2 className="text-2xl font-semibold text-zinc-200">Why Use an AI Vector Generator?</h2>
-                    <p>
-                        Scalable Vector Graphics (SVG) are essential for modern web design because they look sharp at any size.
-                        Unlike PNGs or JPGs, SVGs are code-based, making them infinitely scalable and lightweight.
-                        With our <strong>AI SVG creator</strong>, you can skip the complex design software like Adobe Illustrator or Inkscape.
-                        Just type what you need, and get optimized code ready for your HTML or React project.
-                    </p>
-
-                    <h2 className="text-2xl font-semibold text-zinc-200">Perfect for Developers & Designers</h2>
-                    <ul className="list-disc pl-5 space-y-2 marker:text-indigo-400">
-                        <li><strong>Web Icons:</strong> Generate matching UI sets for your dashboard or app.</li>
-                        <li><strong>Logos:</strong> Create unique branding concepts in seconds.</li>
-                        <li><strong>Illustrations:</strong> Add flat art or material design assets to your landing pages.</li>
-                        <li><strong>Royalty Free:</strong> All generated images are yours to use, free of copyright restrictions.</li>
-                    </ul>
                 </div>
-            </article>
 
-            {/* FAQ Schema - Great for Google Rich Snippets */}
-            <div className="border-t border-zinc-800 pt-12">
-                <h2 className="text-2xl font-bold text-zinc-200 mb-8">Frequently Asked Questions</h2>
-
-                <div className="grid gap-8 md:grid-cols-2">
-                    <div>
-                        <h3 className="font-medium text-zinc-200 mb-2">Is this SVG generator really free?</h3>
-                        <p className="text-sm">Yes! You can generate unlimited SVGs for free. There are no hidden costs or subscriptions required to use this tool.</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                        <h3 className="font-semibold text-zinc-100 mb-2">How to use it</h3>
+                        <ol className="text-sm text-zinc-400 list-decimal pl-4 space-y-1 marker:text-indigo-400">
+                            <li>Enter a clear prompt with shape/style details.</li>
+                            <li>Generate and preview the SVG result.</li>
+                            <li>Download or edit the code for your project.</li>
+                        </ol>
                     </div>
 
-                    <div>
-                        <h3 className="font-medium text-zinc-200 mb-2">Can I use these SVGs for commercial projects?</h3>
-                        <p className="text-sm">Absolutely. The vector art generated by our AI is unique to your prompt and can be used in personal or commercial projects without attribution.</p>
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                        <h3 className="font-semibold text-zinc-100 mb-2">Quick notes</h3>
+                        <ul className="text-sm text-zinc-400 list-disc pl-4 space-y-1 marker:text-indigo-400">
+                            <li>No signup required.</li>
+                            <li>More specific prompts usually work better.</li>
+                            <li>Review outputs before production use.</li>
+                        </ul>
                     </div>
+                </div>
 
-                    <div>
-                        <h3 className="font-medium text-zinc-200 mb-2">How does text-to-SVG work?</h3>
-                        <p className="text-sm">We use large language models (LLMs) trained on code and design patterns. The AI understands visual descriptions and writes the corresponding XML code for the SVG.</p>
-                    </div>
-
-                    <div>
-                        <h3 className="font-medium text-zinc-200 mb-2">Why is my SVG a blank square?</h3>
-                        <p className="text-sm">Sometimes the AI might generate valid XML that doesn't produce visible paths. Try refining your prompt with specific details like "filled circle", "thick lines", or specific colors.</p>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4">
+                    <h3 className="font-semibold text-zinc-100 mb-2">Help & policies</h3>
+                    <p className="text-sm text-zinc-400 mb-3">
+                        Learn the basics of SVG and review site policies.
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                        <Link href="/guides/what-is-svg" className="px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors">
+                            SVG Guide
+                        </Link>
+                        <Link href="/about" className="px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors">
+                            About
+                        </Link>
+                        <Link href="/contact" className="px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors">
+                            Contact
+                        </Link>
+                        <Link href="/privacy" className="px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors">
+                            Privacy
+                        </Link>
+                        <Link href="/terms" className="px-3 py-1.5 rounded-full border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-500 transition-colors">
+                            Terms
+                        </Link>
                     </div>
                 </div>
             </div>
