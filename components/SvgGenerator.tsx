@@ -11,7 +11,7 @@ import { useChat } from 'ai/react'; // Keep for types if needed, or remove if un
 // import { useChat } from 'ai/react';
 
 import { AdUnit } from './AdUnit';
-
+import { AdsterraBanner } from './AdsterraBanner';
 export const SvgGenerator: React.FC = () => {
   const MODEL_MARKER_REGEX = /\[\[MODEL:([^\]]+)\]\]/g;
   const PHASE_MARKER_REGEX = /\[\[PHASE:([^\]]+)\]\]/g;
@@ -267,12 +267,9 @@ export const SvgGenerator: React.FC = () => {
         </div>
       )}
 
-      {/* AdSense Unit - Tool Bottom */}
-      <div className="max-w-4xl mx-auto mt-12 mb-8 px-4">
-        <AdUnit 
-          slot="3342167915" // FreeSVG Tool Bottom
-          className="min-h-[100px] w-full flex justify-center bg-zinc-900/30 rounded-lg overflow-hidden"
-        />
+      {/* Adsterra Unit - Tool Bottom */}
+      <div className="max-w-4xl mx-auto mt-12 mb-8 px-4 flex justify-center bg-zinc-900/10 rounded-lg overflow-hidden py-4">
+        <AdsterraBanner />
       </div>
 
       {historyLoaded && (
