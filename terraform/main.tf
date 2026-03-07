@@ -30,13 +30,13 @@ data "archive_file" "lambda_zip_ts" {
 
 # TypeScript Lambda Function
 resource "aws_lambda_function" "svg_generator" {
-  filename      = data.archive_file.lambda_zip_ts.output_path
-  function_name = "gemini-svg-generator"
-  role          = aws_iam_role.lambda_exec.arn
-  handler       = "index.handler"
-  runtime       = "nodejs20.x"
-  timeout       = 300 # 5 minutes
-  memory_size   = 1024
+  filename         = data.archive_file.lambda_zip_ts.output_path
+  function_name    = "gemini-svg-generator"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "index.handler"
+  runtime          = "nodejs20.x"
+  timeout          = 300 # 5 minutes
+  memory_size      = 1024
   source_code_hash = data.archive_file.lambda_zip_ts.output_base64sha256
 
   environment {
@@ -53,7 +53,7 @@ resource "aws_lambda_function_url" "svg_generator_url" {
   function_name      = aws_lambda_function.svg_generator.function_name
   authorization_type = "NONE"
   invoke_mode        = "RESPONSE_STREAM" # Enable streaming!
-  
+
   cors {
     allow_origins = [
       "https://www.freesvgforme.com",
@@ -81,13 +81,13 @@ resource "aws_lambda_function_url" "svg_generator_url" {
 
 # Python Lambda Function
 resource "aws_lambda_function" "svg_generator_python" {
-  filename      = "${path.module}/../lambda_python/deployment.zip"
-  function_name = "gemini-svg-generator-python"
-  role          = aws_iam_role.lambda_exec.arn
-  handler       = "run.sh"
-  runtime       = "python3.13"
-  timeout       = 300 # 5 minutes
-  memory_size   = 1024
+  filename         = "${path.module}/../lambda_python/deployment.zip"
+  function_name    = "gemini-svg-generator-python"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "run.sh"
+  runtime          = "python3.13"
+  timeout          = 300 # 5 minutes
+  memory_size      = 1024
   source_code_hash = filebase64sha256("${path.module}/../lambda_python/deployment.zip")
   layers = [
     "arn:aws:lambda:us-east-1:753240598075:layer:LambdaAdapterLayerX86:26"
@@ -95,12 +95,12 @@ resource "aws_lambda_function" "svg_generator_python" {
 
   environment {
     variables = {
-      GEMINI_API_KEY           = var.gemini_api_key
-      POSTHOG_API_KEY          = var.posthog_api_key
-      POSTHOG_HOST             = var.posthog_host
-      AWS_LAMBDA_EXEC_WRAPPER  = "/opt/bootstrap"
-      AWS_LWA_INVOKE_MODE      = "response_stream"
-      PORT                     = "8080"
+      GEMINI_API_KEY          = var.gemini_api_key
+      POSTHOG_API_KEY         = var.posthog_api_key
+      POSTHOG_HOST            = var.posthog_host
+      AWS_LAMBDA_EXEC_WRAPPER = "/opt/bootstrap"
+      AWS_LWA_INVOKE_MODE     = "response_stream"
+      PORT                    = "8080"
     }
   }
 }
@@ -110,8 +110,8 @@ resource "aws_lambda_function_url" "svg_generator_python_url" {
   function_name      = aws_lambda_function.svg_generator_python.function_name
   authorization_type = "NONE"
   # Streaming is enabled via Lambda Web Adapter on the Python function.
-  invoke_mode        = "RESPONSE_STREAM" 
-  
+  invoke_mode = "RESPONSE_STREAM"
+
   cors {
     allow_origins = [
       "*" # Allow all for testing
@@ -146,6 +146,39 @@ resource "aws_iam_role" "lambda_exec" {
 resource "aws_iam_role_policy_attachment" "lambda_logs" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# DynamoDB Table for Rate Limiting
+resource "aws_dynamodb_table" "usage_tracking" {
+  name         = "svg-generator-usage"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "ip_date"
+
+  attribute {
+    name = "ip_date"
+    type = "S"
+  }
+}
+
+# Add IAM Policy for DynamoDB Access
+resource "aws_iam_role_policy" "lambda_dynamodb" {
+  name = "svg_generator_dynamodb_policy"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+        ]
+        Effect   = "Allow"
+        Resource = aws_dynamodb_table.usage_tracking.arn
+      }
+    ]
+  })
 }
 
 # ==============================================================================

@@ -30,6 +30,16 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
     return false;
   });
 
+  const [proGens, setProGens] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('vectorcraft_pro_gens') || '0', 10);
+    }
+    return 0;
+  });
+
+  const PRO_LIMIT = 5;
+  const isProExhausted = proGens >= PRO_LIMIT;
+
   useEffect(() => {
     localStorage.setItem('vectorcraft_animated', String(isAnimated));
   }, [isAnimated]);
@@ -37,6 +47,16 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   useEffect(() => {
     localStorage.setItem('vectorcraft_transparent', String(isTransparent));
   }, [isTransparent]);
+
+  useEffect(() => {
+    localStorage.setItem('vectorcraft_pro_gens', String(proGens));
+  }, [proGens]);
+
+  useEffect(() => {
+    if (isProExhausted && selectedModel.includes('pro')) {
+      onModelChange('gemini-2.0-flash');
+    }
+  }, [isProExhausted, selectedModel, onModelChange]);
 
   const { object, submit, isLoading: isSuggestionsLoading } = useObject({
     api: '/api/suggestions',
@@ -63,10 +83,13 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0) {
+      if (selectedModel.includes('pro')) {
+        setProGens(prev => prev + 1);
+      }
       onGenerate(input.trim(), isAnimated, isTransparent);
       setCooldown(30); // 30 second cooldown to match rate limit (2 req/min)
     }
-  }, [input, status, onGenerate, cooldown, isAnimated, isTransparent]);
+  }, [input, status, onGenerate, cooldown, isAnimated, isTransparent, selectedModel]);
 
   const isLoading = status === GenerationStatus.LOADING;
   const isRateLimited = cooldown > 0;
@@ -169,18 +192,26 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
                     </button>
                     <button
                       type="button"
-                      onClick={() => onModelChange('gemini-3-pro-preview')}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                      onClick={() => !isProExhausted && onModelChange('gemini-3-pro-preview')}
+                      disabled={isProExhausted}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isProExhausted ? 'opacity-50 cursor-not-allowed' : ''} ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
-                      <span>Gemini 3.0 Pro</span>
+                      <span className="flex flex-col">
+                        <span>Gemini 3.0 Pro</span>
+                        {isProExhausted && <span className="text-[10px] text-yellow-500/80">Daily limit reached</span>}
+                      </span>
                       {selectedModel === 'gemini-3-pro-preview' && <div className="w-2 h-2 rounded-full bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.5)]" />}
                     </button>
                     <button
                       type="button"
-                      onClick={() => onModelChange('gemini-3.1-pro-preview')}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-3.1-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                      onClick={() => !isProExhausted && onModelChange('gemini-3.1-pro-preview')}
+                      disabled={isProExhausted}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isProExhausted ? 'opacity-50 cursor-not-allowed' : ''} ${selectedModel === 'gemini-3.1-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
-                      <span>Gemini 3.1 Pro</span>
+                      <span className="flex flex-col">
+                        <span>Gemini 3.1 Pro</span>
+                        {isProExhausted && <span className="text-[10px] text-yellow-500/80">Daily limit reached</span>}
+                      </span>
                       {selectedModel === 'gemini-3.1-pro-preview' && <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]" />}
                     </button>
 

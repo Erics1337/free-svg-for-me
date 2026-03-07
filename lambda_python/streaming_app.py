@@ -4,13 +4,44 @@ import queue
 import threading
 import time
 import uuid
+import datetime
 from typing import Iterator
 
+import boto3
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 import google.generativeai as genai
 
 from lambda_function import SYSTEM_PROMPT, _build_prompt, _init_posthog, _model_marker
+
+logger = logging.getLogger(__name__)
+
+table = None
+try:
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+    table = dynamodb.Table('svg-generator-usage')
+except Exception as e:
+    logger.error("Failed to initialize DynamoDB: %s", e)
+
+def check_rate_limit(ip_address: str, limit: int = 4) -> bool:
+    if not table:
+        return True
+    try:
+        today = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+        ip_date = f"{ip_address}#{today}"
+        
+        response = table.update_item(
+            Key={'ip_date': ip_date},
+            UpdateExpression="ADD request_count :inc",
+            ExpressionAttributeValues={':inc': 1},
+            ReturnValues="UPDATED_NEW"
+        )
+        count = response.get('Attributes', {}).get('request_count', 0)
+        return count <= limit
+    except Exception as e:
+        logger.error("DynamoDB rate limit error: %s", e)
+        # Fail open
+        return True
 
 
 logger = logging.getLogger(__name__)
@@ -140,9 +171,20 @@ async def generate_svg(request: Request):
     full_prompt = _build_prompt(prompt, animate, transparent)
 
     primary_model = model_id or "gemini-2.0-flash"
-    used_model = primary_model
     is_pro = "pro" in primary_model
     explicit_model_requested = bool(model_id)
+    
+    # Enforce Server-Side Rate Limit
+    if is_pro:
+        forwarded = request.headers.get("x-forwarded-for")
+        client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+        
+        if not check_rate_limit(client_ip, limit=3):
+            logger.warning("Rate limit exceeded for IP %s. Forcing fallback to gemini-2.0-flash.", client_ip)
+            primary_model = "gemini-2.0-flash"
+            is_pro = False
+
+    used_model = primary_model
     # Pro models (especially with animation) can take a long time before the
     # first token, even when total generation succeeds. Keep the connection
     # alive while waiting instead of failing too early.
