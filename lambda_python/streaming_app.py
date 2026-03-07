@@ -263,11 +263,17 @@ async def generate_svg(request: Request):
             try:
                 duration = time.time() - started_at
                 trace_id = str(uuid.uuid4())
+                
+                posthog_model = used_model
+                if "gemini-3.1-pro" in used_model or "gemini-3-pro" in used_model:
+                    posthog_model = "gemini-1.5-pro"
+                
                 posthog.capture(
                     "lambda-generator",
                     "$ai_generation",
                     {
-                        "$ai_model": used_model,
+                        "$ai_model": posthog_model,
+                        "actual_model": used_model,
                         "$ai_provider": "google",
                         "$ai_input": messages or [{"role": "user", "content": full_prompt}],
                         "$ai_output_choices": [{"role": "assistant", "content": generated_text}],
