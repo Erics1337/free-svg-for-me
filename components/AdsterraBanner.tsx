@@ -2,7 +2,17 @@
 
 import React, { useEffect, useRef } from 'react';
 
-export const AdsterraBanner: React.FC = () => {
+interface AdsterraBannerProps {
+    placementKey?: string;
+    width?: number;
+    height?: number;
+}
+
+export const AdsterraBanner: React.FC<AdsterraBannerProps> = ({
+    placementKey = '24058389dd413846aff4593c52695b0a',
+    width = 300,
+    height = 250,
+}) => {
     const bannerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -15,29 +25,29 @@ export const AdsterraBanner: React.FC = () => {
         scriptOptions.type = 'text/javascript';
         scriptOptions.text = `
             atOptions = {
-                'key' : '24058389dd413846aff4593c52695b0a',
+                'key' : '${placementKey}',
                 'format' : 'iframe',
-                'height' : 250,
-                'width' : 300,
+                'height' : ${height},
+                'width' : ${width},
                 'params' : {}
             };
         `;
 
         const scriptInvoke = document.createElement('script');
         scriptInvoke.type = 'text/javascript';
-        scriptInvoke.src = 'https://www.highperformanceformat.com/24058389dd413846aff4593c52695b0a/invoke.js';
+        scriptInvoke.src = `https://www.highperformanceformat.com/${placementKey}/invoke.js`;
         scriptInvoke.async = true;
 
         bannerRef.current.appendChild(scriptOptions);
         bannerRef.current.appendChild(scriptInvoke);
 
-    }, []);
+    }, [placementKey, width, height]);
 
     return (
         <div className="flex justify-center w-full my-4">
             <div 
                 ref={bannerRef} 
-                style={{ width: '300px', height: '250px', background: 'transparent' }} 
+                style={{ width: `${width}px`, height: `${height}px`, background: 'transparent' }} 
             />
         </div>
     );
