@@ -44,6 +44,7 @@ export const SvgGenerator: React.FC = () => {
   const phaseLabelMap: Record<string, string> = {
     queued: 'Preparing request...',
     thinking: 'Model thinking...',
+    retry: 'Retrying after transient model error...',
     streaming: 'Streaming SVG draft...',
     fallback: 'Retrying with fallback model...',
     finalizing: 'Finalizing SVG...',

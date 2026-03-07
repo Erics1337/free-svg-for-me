@@ -49,9 +49,42 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 PHASE_MARKER_PREFIX = "[[PHASE:"
 PHASE_MARKER_SUFFIX = "]]"
 
+TRANSIENT_ERROR_HINTS = (
+    "internal error",
+    "internal server error",
+    "500",
+    "503",
+    "service unavailable",
+    "temporarily unavailable",
+    "backend error",
+    "deadline exceeded",
+    "connection reset",
+    "econnreset",
+)
+
+
+class GenerationAttemptError(RuntimeError):
+    """Raised when a model attempt fails and may include partial stream context."""
+
+    def __init__(self, message: str, saw_chunk: bool) -> None:
+        super().__init__(message)
+        self.saw_chunk = saw_chunk
+
 
 def _phase_marker(phase: str) -> str:
     return f"{PHASE_MARKER_PREFIX}{phase}{PHASE_MARKER_SUFFIX}"
+
+
+def _is_timeout_like(exc: Exception, error_text: str) -> bool:
+    return isinstance(exc, TimeoutError) or "timed out" in error_text
+
+
+def _is_empty_like(error_text: str) -> bool:
+    return "empty response" in error_text
+
+
+def _is_internal_like(error_text: str) -> bool:
+    return any(hint in error_text for hint in TRANSIENT_ERROR_HINTS)
 
 
 def _stream_generate_attempt(model_id: str, full_prompt: str, first_chunk_timeout_s: int) -> Iterator[str]:
@@ -116,7 +149,10 @@ def _stream_generate_attempt(model_id: str, full_prompt: str, first_chunk_timeou
                 continue
 
             if kind == "error":
-                raise RuntimeError(payload or f"Unknown generation error for {model_id}")
+                raise GenerationAttemptError(
+                    payload or f"Unknown generation error for {model_id}",
+                    saw_chunk=saw_chunk,
+                )
 
             if kind == "done":
                 break
@@ -194,6 +230,8 @@ async def generate_svg(request: Request):
     def event_stream() -> Iterator[str]:
         nonlocal used_model
         generated_text = ""
+        fallback_attempted = False
+        retry_attempted = False
 
         # Flush proxy/browser buffers early.
         yield "initialized" + (" " * 4096)
@@ -211,13 +249,41 @@ async def generate_svg(request: Request):
             used_model = primary_model
         except Exception as exc:
             logger.warning("Primary model failed: %s", exc)
-            error_text = str(exc)
-            is_timeout_like = isinstance(exc, TimeoutError) or "timed out" in error_text.lower()
-            is_empty_like = "empty response" in error_text.lower()
-            should_fallback = (not explicit_model_requested) and is_pro and (is_timeout_like or is_empty_like)
+            error_text = str(exc).lower()
+            saw_partial_output = bool(getattr(exc, "saw_chunk", False))
+            is_timeout_like = _is_timeout_like(exc, error_text)
+            is_empty_like = _is_empty_like(error_text)
+            is_internal_like = _is_internal_like(error_text)
+            transient_failure = is_timeout_like or is_empty_like or is_internal_like
+
+            # Retry once on transient provider failures when no output has been streamed yet.
+            if transient_failure and not saw_partial_output:
+                try:
+                    retry_attempted = True
+                    yield _phase_marker("retry")
+                    generated_text = yield from _run_attempt(primary_model, first_chunk_timeout_s)
+                    used_model = primary_model
+                except Exception as retry_exc:
+                    logger.warning("Primary retry failed: %s", retry_exc)
+                    exc = retry_exc
+                    error_text = str(exc).lower()
+                    saw_partial_output = bool(getattr(exc, "saw_chunk", False))
+                    is_timeout_like = _is_timeout_like(exc, error_text)
+                    is_empty_like = _is_empty_like(error_text)
+                    is_internal_like = _is_internal_like(error_text)
+                    transient_failure = is_timeout_like or is_empty_like or is_internal_like
+
+            should_fallback = (
+                not generated_text
+                and (not explicit_model_requested)
+                and is_pro
+                and transient_failure
+                and not saw_partial_output
+            )
 
             if should_fallback:
                 try:
+                    fallback_attempted = True
                     yield _phase_marker("fallback")
                     used_model = "gemini-2.0-flash"
                     generated_text = yield from _run_attempt(used_model, 20)
@@ -245,7 +311,9 @@ async def generate_svg(request: Request):
                                 "error": "Generation failed",
                                 "details": str(exc),
                                 "requestedModel": primary_model,
-                                "fallbackAttempted": False,
+                                "fallbackAttempted": fallback_attempted,
+                                "retryAttempted": retry_attempted,
+                                "transientFailure": transient_failure,
                             },
                         )
                         posthog.flush()
@@ -253,7 +321,8 @@ async def generate_svg(request: Request):
                         logger.exception("Failed to flush PostHog for generation error")
                 yield (
                     "Error: Generation failed: "
-                    f"{exc} (requestedModel={primary_model}, fallbackAttempted=false)"
+                    f"{exc} (requestedModel={primary_model}, fallbackAttempted={str(fallback_attempted).lower()}, "
+                    f"retryAttempted={str(retry_attempted).lower()})"
                 )
                 return
 
