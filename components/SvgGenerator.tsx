@@ -10,7 +10,6 @@ import { AlertCircle } from 'lucide-react';
 import { useChat } from 'ai/react'; // Keep for types if needed, or remove if unused. Actually remove it.
 // import { useChat } from 'ai/react';
 
-import { AdUnit } from './AdUnit';
 import { AdsterraBanner } from './AdsterraBanner';
 export const SvgGenerator: React.FC = () => {
   const MODEL_MARKER_REGEX = /\[\[MODEL:([^\]]+)\]\]/g;
