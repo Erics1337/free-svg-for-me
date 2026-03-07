@@ -2,6 +2,13 @@
 
 import React, { useEffect, useRef } from 'react';
 
+declare global {
+    interface Window {
+        atOptions?: Record<string, unknown>;
+        __adsterraLoadQueue?: Promise<void>;
+    }
+}
+
 interface AdsterraBannerProps {
     placementKey?: string;
     width?: number;
@@ -16,30 +23,47 @@ export const AdsterraBanner: React.FC<AdsterraBannerProps> = ({
     const bannerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!bannerRef.current) return;
+        const container = bannerRef.current;
+        if (!container) return;
+        let cancelled = false;
 
         // Clean up previous children to avoid duplicate ads on re-renders
-        bannerRef.current.innerHTML = '';
+        container.innerHTML = '';
 
-        const scriptOptions = document.createElement('script');
-        scriptOptions.type = 'text/javascript';
-        scriptOptions.text = `
-            atOptions = {
-                'key' : '${placementKey}',
-                'format' : 'iframe',
-                'height' : ${height},
-                'width' : ${width},
-                'params' : {}
-            };
-        `;
+        const injectBanner = () =>
+            new Promise<void>((resolve) => {
+                if (cancelled) {
+                    resolve();
+                    return;
+                }
 
-        const scriptInvoke = document.createElement('script');
-        scriptInvoke.type = 'text/javascript';
-        scriptInvoke.src = `https://www.highperformanceformat.com/${placementKey}/invoke.js`;
-        scriptInvoke.async = true;
+                window.atOptions = {
+                    key: placementKey,
+                    format: 'iframe',
+                    height,
+                    width,
+                    params: {},
+                };
 
-        bannerRef.current.appendChild(scriptOptions);
-        bannerRef.current.appendChild(scriptInvoke);
+                const scriptInvoke = document.createElement('script');
+                scriptInvoke.type = 'text/javascript';
+                scriptInvoke.src = `https://www.highperformanceformat.com/${placementKey}/invoke.js`;
+                scriptInvoke.async = false;
+                scriptInvoke.onload = () => resolve();
+                scriptInvoke.onerror = () => resolve();
+                container.appendChild(scriptInvoke);
+            });
+
+        // Adsterra's invoke script reads global atOptions. Queue loads so
+        // multiple placements on one page don't clobber each other's config.
+        window.__adsterraLoadQueue = (window.__adsterraLoadQueue || Promise.resolve())
+            .catch(() => undefined)
+            .then(() => injectBanner());
+
+        return () => {
+            cancelled = true;
+            container.innerHTML = '';
+        };
 
     }, [placementKey, width, height]);
 
