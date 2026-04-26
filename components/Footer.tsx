@@ -33,28 +33,14 @@ export function Footer() {
                     </nav>
                 </div>
 
-                <div className="flex justify-center">
-                    <a
-                        href="https://crestcodecreative.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-                        aria-label="Made with love by Crest Code"
-                    >
-                        <span>Made with ❤️ by</span>
-                        <svg className="h-5 w-5 shrink-0" viewBox="0 0 120 138" fill="none" aria-hidden="true">
-                            <defs>
-                                <linearGradient id="crest-footer-gradient" x1="20" y1="12" x2="100" y2="126" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor="#184A7D" />
-                                    <stop offset="1" stopColor="#4DE0C0" />
-                                </linearGradient>
-                            </defs>
-                            <path d="M60 4 111 34v70l-51 30L9 104V34L60 4Z" fill="url(#crest-footer-gradient)" />
-                            <path d="M60 40 25 84a7 7 0 1 0 11 9l24-30 24 30a7 7 0 0 0 11-9L60 40Zm0 30-17 22a7 7 0 1 0 11 9l6-8 6 8a7 7 0 1 0 11-9L60 70Z" fill="#0A1020" />
-                        </svg>
-                        <span className="underline underline-offset-2">Crest Code</span>
-                    </a>
-                </div>
+                <a
+                    href="https://crestcodecreative.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-[10px] text-zinc-950 hover:text-zinc-950 transition-colors"
+                >
+                    .
+                </a>
             </div>
         </footer>
     );
