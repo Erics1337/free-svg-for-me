@@ -24,6 +24,8 @@ dist-ssr
 *.sw?
 .next
 .env
+.env.local
+.env.production
 
 # Terraform
 .terraform/

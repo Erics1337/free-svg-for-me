@@ -12,6 +12,9 @@
   "dependencies": {
     "@ai-sdk/google": "^1.1.10",
     "@google/genai": "^1.29.1",
+    "@stripe/stripe-js": "^9.3.1",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/supabase-js": "^2.104.1",
     "ai": "^4.1.41",
     "autoprefixer": "^10.4.22",
     "lucide-react": "^0.553.0",
@@ -20,6 +23,7 @@
     "posthog-js": "^1.298.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "stripe": "^22.1.0",
     "tailwindcss": "^4.1.17",
     "zod": "^3.24.2"
   },

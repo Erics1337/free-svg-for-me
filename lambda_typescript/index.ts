@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText } from 'ai';
 import { PostHog } from 'posthog-node';
+import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 // AWS Lambda Streaming Handler wrapper
@@ -12,6 +13,42 @@ declare const awslambda: {
         from: (stream: any, metadata: any) => any;
     };
 };
+
+// In-memory IP rate limit for anonymous users: 3 requests per hour
+const anonRateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const ANON_LIMIT = 3;
+const ANON_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function checkAnonRateLimit(ip: string): { allowed: boolean; remaining: number } {
+    const now = Date.now();
+
+    // Purge all expired entries to prevent unbounded Map growth
+    for (const [key, rec] of anonRateLimitStore) {
+        if (now > rec.resetTime) anonRateLimitStore.delete(key);
+    }
+
+    const record = anonRateLimitStore.get(ip);
+    if (!record) {
+        anonRateLimitStore.set(ip, { count: 1, resetTime: now + ANON_WINDOW_MS });
+        return { allowed: true, remaining: ANON_LIMIT - 1 };
+    }
+    if (record.count >= ANON_LIMIT) {
+        return { allowed: false, remaining: 0 };
+    }
+    record.count += 1;
+    return { allowed: true, remaining: ANON_LIMIT - record.count };
+}
+
+// Credit costs per model
+const CREDIT_COSTS: Record<string, number> = {
+    'gemini-2.0-flash': 1,
+    'gemini-3-pro-preview': 3,
+    'gemini-3.1-pro-preview': 5,
+};
+
+// Initialize Supabase client with service role for server-side operations
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export const handler = awslambda.streamifyResponse(async (event: any, responseStream: any, _context: any) => {
     console.log("Request received");
@@ -54,13 +91,88 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
         return;
     }
 
-    const { messages, prompt: bodyPrompt, model, animate, transparent } = body;
+    const { messages, prompt: bodyPrompt, model, animate, transparent, authToken } = body;
     const prompt = bodyPrompt || (messages?.length > 0 ? messages[messages.length - 1].content : "");
 
     if (!prompt) {
         responseStream.write('error: Prompt is required');
         responseStream.end();
         return;
+    }
+
+    const ALLOWED_MODELS = Object.keys(CREDIT_COSTS);
+    const modelId = ALLOWED_MODELS.includes(model) ? model : 'gemini-2.0-flash';
+    if (model && !ALLOWED_MODELS.includes(model)) {
+        console.warn(`Invalid model requested: "${model}", falling back to gemini-2.0-flash`);
+    }
+    const isProModel = modelId.includes('pro');
+    const creditCost = CREDIT_COSTS[modelId];
+
+    if (authToken) {
+        // --- Authenticated path: verify JWT and deduct credits ---
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser(authToken);
+        if (authError || !user) {
+            console.error("Auth error:", authError);
+            responseStream.write('error: Invalid authentication. Please sign in again.');
+            responseStream.end();
+            return;
+        }
+
+        console.log("User authenticated:", user.id.substring(0, 8) + "…");
+
+        const { data: deductionResult, error: deductionError } = await supabase.rpc('deduct_credits_for_generation', {
+            p_user_id: user.id,
+            p_credits_needed: creditCost,
+            p_model: modelId,
+            p_is_pro_model: isProModel,
+        });
+
+        if (deductionError) {
+            console.error("Credit deduction error:", deductionError);
+            responseStream.write('error: Failed to process credits. Please try again.');
+            responseStream.end();
+            return;
+        }
+
+        const result = Array.isArray(deductionResult) ? deductionResult[0] : deductionResult;
+        if (!result || !result.success) {
+            const errorMsg = result?.error_message || 'Insufficient credits';
+            console.log("Credit check failed:", errorMsg);
+            responseStream.write(`error: ${errorMsg}. Please purchase more credits.`);
+            responseStream.end();
+            return;
+        }
+
+        console.log("Credits deducted:", {
+            userId: user.id,
+            model: modelId,
+            cost: creditCost,
+            usedFreeTier: result.used_free_tier,
+            remainingCredits: result.remaining_credits
+        });
+    } else {
+        // --- Anonymous path: IP rate limit (3/hour), Flash only ---
+        if (isProModel) {
+            responseStream.write('error: Sign in required to use Pro models.');
+            responseStream.end();
+            return;
+        }
+
+        // Prefer the gateway-assigned source IP (not client-controllable).
+        // Fall back to the rightmost x-forwarded-for entry (appended by the trusted proxy).
+        const xffLast = event.headers?.['x-forwarded-for']?.split(',').at(-1)?.trim();
+        const clientIp = event.requestContext?.http?.sourceIp || xffLast || crypto.randomUUID();
+
+        const { allowed, remaining } = checkAnonRateLimit(clientIp);
+        if (!allowed) {
+            responseStream.write(`error: Rate limit reached. Sign up for free to get 10 credits and keep generating.`);
+            responseStream.end();
+            return;
+        }
+
+        console.log(`Anonymous generation, ${remaining} attempts remaining this hour`);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -133,10 +245,10 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
             console.log(`Starting generation with ${modelId}`);
             let hasChunks = false;
 
-            // Wrap writer to detect chunks
+            // Wrap writer to reset the timeout on any write (including keep-alives).
+            // hasChunks is set exclusively by onChunk so keep-alive pings don't count as content.
             const originalWrite = dataStreamWriter.writeData;
             dataStreamWriter.writeData = (data) => {
-                hasChunks = true;
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = undefined;
@@ -192,14 +304,20 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
 
                     console.log("Capturing PostHog event", { modelId, duration, tokens: usage.totalTokens, traceId });
 
+                    const promptText = messages
+                        ? messages.map((m: any) => m.content ?? '').join(' ')
+                        : fullPrompt;
+                    const promptHash = crypto.createHash('sha256').update(promptText).digest('hex').substring(0, 16);
+
                     posthog.capture({
                         distinctId: 'lambda-generator',
                         event: '$ai_generation',
                         properties: {
                             $ai_model: modelId,
                             $ai_provider: 'google',
-                            $ai_input: messages || [{ role: 'user', content: fullPrompt }],
-                            $ai_output_choices: [{ role: 'assistant', content: fullText }],
+                            $ai_input_length: promptText.length,
+                            $ai_input_hash: promptHash,
+                            $ai_output_length: fullText.length,
                             $ai_latency: duration,
                             $ai_input_tokens: usage.promptTokens,
                             $ai_output_tokens: usage.completionTokens,
@@ -268,7 +386,7 @@ export const handler = awslambda.streamifyResponse(async (event: any, responseSt
         } else {
             // If it was a real error or user cancelled, we should probably output it
             console.error("Generation failed", error);
-            dataStreamWriter.writeData(`Error: Generation failed: ${error.message}`);
+            dataStreamWriter.writeData(`Error: Generation failed. Please try again or contact support.`);
 
             if (posthog) {
                 posthog.capture({

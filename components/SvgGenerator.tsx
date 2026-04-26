@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { InputSection } from './InputSection';
 import { SvgPreview } from './SvgPreview';
 import { HistorySection } from './HistorySection';
+import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 
 import { GeneratedSvg, GenerationStatus, ApiError } from '../types';
-import { AlertCircle } from 'lucide-react';
-import { useChat } from 'ai/react'; // Keep for types if needed, or remove if unused. Actually remove it.
-// import { useChat } from 'ai/react';
+import { AlertCircle, UserPlus, Zap, LogIn } from 'lucide-react';
 
 import { AdsterraBanner } from './AdsterraBanner';
 export const SvgGenerator: React.FC = () => {
@@ -18,6 +18,8 @@ export const SvgGenerator: React.FC = () => {
     'gemini-3.1-pro': 'gemini-3.1-pro-preview',
   };
 
+  const { isAuthenticated, refreshProfile } = useAuth();
+
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [currentSvg, setCurrentSvg] = useState<GeneratedSvg | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -25,10 +27,10 @@ export const SvgGenerator: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const savedModel = localStorage.getItem('vectorcraft_model');
-      if (!savedModel) return 'gemini-3.1-pro-preview';
+      if (!savedModel) return 'gemini-2.0-flash'; // Default to free tier
       return LEGACY_MODEL_MAP[savedModel] || savedModel;
     }
-    return 'gemini-3.1-pro-preview';
+    return 'gemini-2.0-flash';
   });
 
   useEffect(() => {
@@ -68,6 +70,10 @@ export const SvgGenerator: React.FC = () => {
     });
 
     try {
+      // Get the current session token (may be null for anonymous users)
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
       const response = await fetch(LAMBDA_URL, {
         method: 'POST',
         headers: {
@@ -77,7 +83,8 @@ export const SvgGenerator: React.FC = () => {
           prompt,
           model: selectedModel,
           animate,
-          transparent
+          transparent,
+          authToken, // Pass the auth token to Lambda
         }),
       });
 
@@ -143,8 +150,8 @@ export const SvgGenerator: React.FC = () => {
       fullContent = fullContent.replace(PHASE_MARKER_REGEX, '');
       setCurrentSvg(prev => prev && prev.id === 'streaming' ? { ...prev, phase: 'Finalizing SVG...' } : prev);
       const streamedError = fullContent.trim();
-      if (streamedError.startsWith('Error:')) {
-        throw new Error(streamedError);
+      if (streamedError.startsWith('error:') || streamedError.startsWith('Error:')) {
+        throw new Error(streamedError.replace(/^error:\s*/i, ''));
       }
       let cleanSvg = fullContent;
       const svgMatch = fullContent.match(/<svg[\s\S]*?<\/svg>/i);
@@ -171,6 +178,9 @@ export const SvgGenerator: React.FC = () => {
           return [newSvg, ...prev];
         });
         setStatus(GenerationStatus.SUCCESS);
+        
+        // Refresh profile to update credits display
+        try { await refreshProfile(); } catch (refreshErr) { console.error('Failed to refresh profile after generation:', refreshErr); }
       } else {
         throw new Error("No valid SVG found in the response.");
       }
@@ -182,6 +192,9 @@ export const SvgGenerator: React.FC = () => {
         message: "Generation Failed",
         details: err.message || "An unexpected error occurred."
       });
+      
+      // Refresh profile on error too (in case credits were deducted before error)
+      try { await refreshProfile(); } catch (refreshErr) { console.error('Failed to refresh profile after generation error:', refreshErr); }
     } finally {
       setIsLoading(false);
     }
@@ -222,6 +235,8 @@ export const SvgGenerator: React.FC = () => {
     setHistory(prev => prev.filter(item => item.id !== id));
   };
 
+  const errorMsg = error?.details?.toLowerCase();
+
   return (
     <main className="pb-20 pt-8">
 
@@ -235,15 +250,74 @@ export const SvgGenerator: React.FC = () => {
 
       {status === GenerationStatus.ERROR && error && (
         <div className="max-w-2xl mx-auto mt-8 px-4">
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 text-red-200">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-red-400">{error.message}</h4>
-              <p className="text-sm text-red-300/70 mt-1 break-words whitespace-pre-wrap font-mono bg-red-950/30 p-2 rounded mt-2 border border-red-500/10">
-                {error.details}
-              </p>
+          {/* Anonymous rate limit hit → sign up nudge */}
+          {(errorMsg?.includes('sign up') || errorMsg?.includes('rate limit')) && !isAuthenticated ? (
+            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-5 flex items-start gap-4">
+              <UserPlus className="w-6 h-6 text-indigo-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-indigo-300 mb-1">You've used your 3 free generations</h4>
+                <p className="text-sm text-zinc-400 mb-3">
+                  Sign up free and get <span className="text-white font-medium">10 credits</span> instantly — no card required.
+                </p>
+                <button
+                  onClick={() => document.querySelector<HTMLButtonElement>('[data-auth-trigger]')?.click()}
+                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                  Sign up free — it's instant
+                </button>
+              </div>
             </div>
-          </div>
+
+          ) : errorMsg?.includes('sign in') || errorMsg?.includes('pro model') ? (
+            /* Pro model requires sign-in */
+            <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-5 flex items-start gap-4">
+              <LogIn className="w-6 h-6 text-violet-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-violet-300 mb-1">Sign in to use Pro models</h4>
+                <p className="text-sm text-zinc-400 mb-3">
+                  Pro models (Gemini 3.0 &amp; 3.1) require an account. Sign up free and get{' '}
+                  <span className="text-white font-medium">10 credits</span> to use them right away.
+                </p>
+                <button
+                  onClick={() => document.querySelector<HTMLButtonElement>('[data-auth-trigger]')?.click()}
+                  className="px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                  Sign in / Sign up free
+                </button>
+              </div>
+            </div>
+
+          ) : errorMsg?.includes('insufficient credits') || errorMsg?.includes('not enough credits') ? (
+            /* Out of credits → buy more */
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 flex items-start gap-4">
+              <Zap className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-amber-300 mb-1">You're out of credits</h4>
+                <p className="text-sm text-zinc-400 mb-3">
+                  Top up to keep generating. Starter packs start at just{' '}
+                  <span className="text-white font-medium">$4 for 20 credits</span>.
+                </p>
+                <button
+                  onClick={() => document.querySelector<HTMLButtonElement>('[data-buy-credits-trigger]')?.click()}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium text-sm transition-colors"
+                >
+                  Buy credits
+                </button>
+              </div>
+            </div>
+
+          ) : (
+            /* Generic error */
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-red-400">{error.message}</h4>
+                <p className="text-sm text-red-300/70 mt-2 break-words whitespace-pre-wrap font-mono bg-red-950/30 p-2 rounded border border-red-500/10">
+                  {error.details}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

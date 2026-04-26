@@ -7,10 +7,11 @@
         "build": "esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:aws-lambda"
     },
     "dependencies": {
-        "@ai-sdk/google": "^2.0.43",
+        "@ai-sdk/google": "^1.1.10",
         "@google/genai": "^1.30.0",
         "@posthog/ai": "^7.2.0",
-        "ai": "^5.0.102",
+        "@supabase/supabase-js": "^2.39.3",
+        "ai": "^4.1.41",
         "posthog-node": "^5.14.0"
     },
     "devDependencies": {

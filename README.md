@@ -2,58 +2,68 @@
 
 **Free SVG For Me** is a simple, powerful tool that generates custom SVGs, icons, and vector art from text descriptions using AI.
 
-No signups. No paywalls. Just free vector art for your projects.
+Users get 3 free Pro generations, then purchase credit packs to continue.
 
 ## Features
 
 - 🖌️ **Text-to-SVG:** Powered by Google Gemini AI.
-- ⚡ **Instant Generation:** Get clean code-ready SVGs in seconds.
-- 🆓 **100% Free:** Monetized via unobtrusive ads, so you don't have to pay.
+- ⚡ **Streaming Generation:** Live preview as SVG renders.
+- 💳 **Credits:** Buy credit packs via Stripe, spend on Pro model generations.
+- 🔐 **Auth:** Supabase email + Google OAuth.
 - 📱 **Responsive:** Works on mobile and desktop.
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
-- **Backend:** AWS Lambda (Python 3.13 & Node.js 20)
+- **Frontend:** React + Vite (`index.tsx`)
+- **API Routes:** Next.js App Router (`/app/api`)
+- **Backend:** AWS Lambda Node.js 20 (streaming)
+- **Auth + Credits:** Supabase (Postgres + RLS + Edge Functions)
+- **Payments:** Stripe Checkout
+- **Infra:** Terraform
+- **AI:** Google Gemini (Flash, 3.0 Pro, 3.1 Pro)
 - **Styling:** Tailwind CSS
-- **AI:** Google Gemini (gemini-2.0-flash)
-- **Icons:** Lucide React
 
-## Backend Architecture (Migration)
+## Credit System
 
-We currently run two parallel Lambda functions for testing and migration purposes:
+| Model | Credit Cost |
+|---|---|
+| Gemini 2.0 Flash | 1 |
+| Gemini 3.0 Pro | 3 |
+| Gemini 3.1 Pro | 5 |
 
-| Feature              | Node.js (Legacy)                          | Python (New)                     |
-| :------------------- | :---------------------------------------- | :------------------------------- |
-| **Function Name**    | `gemini-svg-generator`                    | `gemini-svg-generator-python`    |
-| **Runtime**          | Node.js 20.x                              | Python 3.13                      |
-| **Response Type**    | Streaming (`awslambda.streamifyResponse`) | Standard JSON (`{"svg": "..."}`) |
-| **Timeout Handling** | Basic (Platform Native)                   | Robust (Threading + Fallback)    |
-| **Analytics**        | PostHog (npm)                             | PostHog (python)                 |
+New users get **3 free Pro generations**. Credit packages: $4/20 credits, $15/100, $60/500.
 
-To switch your frontend between the Node.js and Python backends, update the `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` environment variable.
+## Deployed Endpoints
+
+| Service | URL |
+|---|---|
+| Lambda | Set `NEXT_PUBLIC_LAMBDA_FUNCTION_URL` in `.env.local` |
+| Stripe Webhook | Configured in Stripe dashboard — see private deployment docs |
+| Supabase | Set `NEXT_PUBLIC_SUPABASE_URL` in `.env.local` |
 
 ## Running Locally
 
-1. **Clone the repo**
-2. **Install dependencies:**
-
+1. **Install dependencies:** `npm install`
+2. **Set up environment:** Copy `.env.example` to `.env.local` and fill in all values.
+3. **Run dev server:** `npm run dev`
+4. **(Optional) Test Stripe webhooks locally:**
    ```bash
-   npm install
+   stripe listen --forward-to localhost:3000/api/webhook
    ```
+   Use test card `4242 4242 4242 4242`.
 
-3. **Set up environment:**
-   Create a `.env` file and add your Gemini API key:
+## Deploying
 
-   ```bash
-   GEMINI_API_KEY=your_key_here
-   ```
+### Lambda
+```bash
+cd typescript_lambda && npm run build
+cd ../terraform && terraform apply
+```
 
-4. **Run the dev server:**
-
-   ```bash
-   npm run dev
-   ```
+### Supabase Edge Function (Stripe webhook)
+```bash
+supabase functions deploy stripe-webhook
+```
 
 ---
 

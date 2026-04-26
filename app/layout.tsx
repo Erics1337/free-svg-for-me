@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { CSPostHogProvider } from './providers';
 import { Footer } from '@/components/Footer';
+import { AuthProvider } from '@/components/AuthContext';
 
 export const metadata: Metadata = {
   title: "Free SVG For Me | AI Vector Art & Icon Generator",
@@ -33,10 +34,12 @@ export default function RootLayout({
     <html lang="en">
       <head>
       </head>
-      <body className="bg-zinc-950 antialiased">
+      <body className="bg-zinc-950 antialiased" suppressHydrationWarning>
         <CSPostHogProvider>
-          {children}
-          <Footer />
+          <AuthProvider>
+            {children}
+            <Footer />
+          </AuthProvider>
         </CSPostHogProvider>
       </body>
     </html>

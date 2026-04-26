@@ -66,7 +66,10 @@ export async function POST(req: Request) {
         });
 
         return result.toTextStreamResponse();
-    } catch (error) {
+    } catch (error: any) {
+        if (error?.name === 'AbortError' || error?.code === 'ECONNRESET') {
+            return new NextResponse(null, { status: 499 });
+        }
         console.error("Failed to generate suggestions:", error);
         // Fallback suggestions in case of error
         return NextResponse.json({

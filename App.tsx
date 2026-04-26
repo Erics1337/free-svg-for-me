@@ -8,6 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { InputSection } from './components/InputSection';
 import { SvgPreview } from './components/SvgPreview';
 import { HistorySection } from './components/HistorySection';
+import { AuthProvider } from './components/AuthContext';
+import { Header } from './components/Header';
 // import { SEOContent } from './components/SEOContent';
 import { GeneratedSvg, GenerationStatus, ApiError } from './types';
 import { AlertCircle } from 'lucide-react';
@@ -101,60 +103,63 @@ const App: React.FC = () => {
   } : currentSvg;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30 pt-8">
-      <main className="pb-20">
-        <InputSection
-          onGenerate={handleGenerate}
-          status={status}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-        />
+    <AuthProvider>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-indigo-500/30">
+        <Header />
+        <main className="pb-20 pt-8">
+          <InputSection
+            onGenerate={handleGenerate}
+            status={status}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+          />
 
-        {status === GenerationStatus.ERROR && error && (
-          <div className="max-w-2xl mx-auto mt-8 px-4">
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 text-red-200">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-red-400">{error.message}</h4>
-                <p className="text-sm text-red-300/70 mt-1 break-words whitespace-pre-wrap font-mono bg-red-950/30 p-2 rounded mt-2 border border-red-500/10">
-                  {error.details}
-                </p>
+          {status === GenerationStatus.ERROR && error && (
+            <div className="max-w-2xl mx-auto mt-8 px-4">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 text-red-200">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-red-400">{error.message}</h4>
+                  <p className="text-sm text-red-300/70 mt-1 break-words whitespace-pre-wrap font-mono bg-red-950/30 p-2 rounded mt-2 border border-red-500/10">
+                    {error.details}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {(status === GenerationStatus.SUCCESS || status === GenerationStatus.LOADING) && displaySvg && (
-          <SvgPreview
-            data={displaySvg}
-          />
-        )}
+          {(status === GenerationStatus.SUCCESS || status === GenerationStatus.LOADING) && displaySvg && (
+            <SvgPreview
+              data={displaySvg}
+            />
+          )}
 
-        {/* Empty State / Placeholder */}
-        {status === GenerationStatus.IDLE && (
-          <div className="max-w-2xl mx-auto mt-16 text-center px-4 opacity-50 pointer-events-none select-none">
-            <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-zinc-900/50 border border-white/5 mb-4">
-              <svg className="w-12 h-12 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
+          {/* Empty State / Placeholder */}
+          {status === GenerationStatus.IDLE && (
+            <div className="max-w-2xl mx-auto mt-16 text-center px-4 opacity-50 pointer-events-none select-none">
+              <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-zinc-900/50 border border-white/5 mb-4">
+                <svg className="w-12 h-12 text-zinc-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </div>
+              <p className="text-zinc-600 text-sm">Generated artwork will appear here</p>
             </div>
-            <p className="text-zinc-600 text-sm">Generated artwork will appear here</p>
-          </div>
-        )}
+          )}
 
 
-        <HistorySection
-          history={history}
-          onSelect={handleSelectHistory}
-          onDelete={handleDeleteHistory}
-          selectedId={currentSvg?.id}
-        />
+          <HistorySection
+            history={history}
+            onSelect={handleSelectHistory}
+            onDelete={handleDeleteHistory}
+            selectedId={currentSvg?.id}
+          />
 
-        {/* <SEOContent /> */}
-      </main>
-    </div>
+          {/* <SEOContent /> */}
+        </main>
+      </div>
+    </AuthProvider>
   );
 };
 

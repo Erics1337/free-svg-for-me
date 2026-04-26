@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Send, Loader2, Wand2 } from 'lucide-react';
+import { Send, Loader2, Wand2, Coins, Crown, AlertCircle } from 'lucide-react';
 import { GenerationStatus } from '../types';
 import { experimental_useObject as useObject } from 'ai/react';
 import { z } from 'zod';
+import { useAuth } from './AuthContext';
+import { getCreditCost, isProModel, FREE_PRO_GENERATIONS } from '../lib/supabase';
 
 interface InputSectionProps {
   onGenerate: (prompt: string, animate: boolean, transparent: boolean) => void;
@@ -15,6 +17,9 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
   const [input, setInput] = useState('');
   const [cooldown, setCooldown] = useState(0);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+
+  const { isAuthenticated, credits, freeProGenerationsRemaining, freeProGenerationsUsed } = useAuth();
 
   const [isAnimated, setIsAnimated] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -30,15 +35,12 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
     return false;
   });
 
-  const [proGens, setProGens] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('vectorcraft_pro_gens') || '0', 10);
-    }
-    return 0;
-  });
-
-  const PRO_LIMIT = 5;
-  const isProExhausted = proGens >= PRO_LIMIT;
+  // Calculate if user can afford selected model
+  const creditCost = getCreditCost(selectedModel);
+  const isPro = isProModel(selectedModel);
+  const canUseFreePro = isPro && freeProGenerationsRemaining > 0;
+  const hasEnoughCredits = credits >= creditCost;
+  const canGenerate = !isAuthenticated || canUseFreePro || hasEnoughCredits;
 
   useEffect(() => {
     localStorage.setItem('vectorcraft_animated', String(isAnimated));
@@ -48,15 +50,12 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
     localStorage.setItem('vectorcraft_transparent', String(isTransparent));
   }, [isTransparent]);
 
+  // Auto-switch to flash if can't afford pro and no free gens left
   useEffect(() => {
-    localStorage.setItem('vectorcraft_pro_gens', String(proGens));
-  }, [proGens]);
-
-  useEffect(() => {
-    if (isProExhausted && selectedModel.includes('pro')) {
+    if (isAuthenticated && isPro && !canUseFreePro && !hasEnoughCredits) {
       onModelChange('gemini-2.0-flash');
     }
-  }, [isProExhausted, selectedModel, onModelChange]);
+  }, [isAuthenticated, isPro, canUseFreePro, hasEnoughCredits, onModelChange]);
 
   const { object, submit, isLoading: isSuggestionsLoading } = useObject({
     api: '/api/suggestions',
@@ -82,17 +81,25 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0) {
-      if (selectedModel.includes('pro')) {
-        setProGens(prev => prev + 1);
-      }
+    
+    if (input.trim() && status !== GenerationStatus.LOADING && cooldown === 0 && canGenerate) {
       onGenerate(input.trim(), isAnimated, isTransparent);
       setCooldown(30); // 30 second cooldown to match rate limit (2 req/min)
     }
-  }, [input, status, onGenerate, cooldown, isAnimated, isTransparent, selectedModel]);
+  }, [input, status, onGenerate, cooldown, isAnimated, isTransparent, isAuthenticated, canGenerate]);
 
   const isLoading = status === GenerationStatus.LOADING;
   const isRateLimited = cooldown > 0;
+  
+  // Get button state text
+  const getButtonText = () => {
+    if (isLoading) return { text: 'Crafting...', icon: <Loader2 className="w-5 h-5 animate-spin" /> };
+    if (isRateLimited) return { text: `Wait ${cooldown}s`, icon: null };
+    if (!canGenerate) return { text: 'Buy Credits', icon: <Coins className="w-5 h-5" /> };
+    return { text: 'Generate', icon: <Send className="w-5 h-5" /> };
+  };
+  
+  const buttonState = getButtonText();
 
   return (
     <div className="w-full max-w-2xl mx-auto mt-12 px-4">
@@ -130,25 +137,16 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
                   flex items-center justify-center gap-2 px-6 py-3 rounded-l-lg font-semibold transition-all duration-200 flex-1
                   ${!input.trim() || isLoading || isRateLimited
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                    : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
+                    : !isAuthenticated 
+                      ? 'bg-indigo-500 text-white hover:bg-indigo-600 active:scale-95 shadow-lg shadow-indigo-500/20 cursor-pointer'
+                      : !canGenerate
+                        ? 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer'
+                        : 'bg-white text-zinc-950 hover:bg-zinc-200 active:scale-95 shadow-lg shadow-white/10 cursor-pointer'}
                 `}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="hidden sm:inline">Crafting...</span>
-                  </>
-                ) : isRateLimited ? (
-                  <>
-                    <span className="hidden sm:inline">Wait {cooldown}s</span>
-                    <span className="sm:hidden">{cooldown}s</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline">Generate</span>
-                    <Send className="w-5 h-5" />
-                  </>
-                )}
+                {buttonState.icon}
+                <span className="hidden sm:inline">{buttonState.text}</span>
+                <span className="sm:hidden">{isRateLimited ? `${cooldown}s` : buttonState.text.split(' ')[0]}</span>
               </button>
               <button
                 type="button"
@@ -187,30 +185,55 @@ export const InputSection: React.FC<InputSectionProps> = ({ onGenerate, status, 
                       onClick={() => onModelChange('gemini-2.0-flash')}
                       className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${selectedModel === 'gemini-2.0-flash' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
-                      <span>Gemini 2.0 Flash</span>
+                      <span className="flex flex-col">
+                        <span>Gemini 2.0 Flash</span>
+                        <span className="text-[10px] text-zinc-500">
+                          {isAuthenticated ? `${getCreditCost('gemini-2.0-flash')} credit` : '1 credit'}
+                        </span>
+                      </span>
                       {selectedModel === 'gemini-2.0-flash' && <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" />}
                     </button>
                     <button
                       type="button"
-                      onClick={() => !isProExhausted && onModelChange('gemini-3-pro-preview')}
-                      disabled={isProExhausted}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isProExhausted ? 'opacity-50 cursor-not-allowed' : ''} ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                      onClick={() => onModelChange('gemini-3-pro-preview')}
+                      disabled={isAuthenticated && freeProGenerationsRemaining <= 0 && credits < getCreditCost('gemini-3-pro-preview')}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${
+                        isAuthenticated && freeProGenerationsRemaining <= 0 && credits < getCreditCost('gemini-3-pro-preview') ? 'opacity-50 cursor-not-allowed' : ''
+                      } ${selectedModel === 'gemini-3-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
                       <span className="flex flex-col">
-                        <span>Gemini 3.0 Pro</span>
-                        {isProExhausted && <span className="text-[10px] text-yellow-500/80">Daily limit reached</span>}
+                        <span className="flex items-center gap-1">
+                          Gemini 3.0 Pro
+                          {canUseFreePro && selectedModel === 'gemini-3-pro-preview' && (
+                            <Crown className="w-3 h-3 text-amber-400" />
+                          )}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                          {getCreditCost('gemini-3-pro-preview')} credits
+                          {canUseFreePro && <span className="text-amber-400/80">(free: {freeProGenerationsRemaining}/{FREE_PRO_GENERATIONS})</span>}
+                        </span>
                       </span>
                       {selectedModel === 'gemini-3-pro-preview' && <div className="w-2 h-2 rounded-full bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.5)]" />}
                     </button>
                     <button
                       type="button"
-                      onClick={() => !isProExhausted && onModelChange('gemini-3.1-pro-preview')}
-                      disabled={isProExhausted}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${isProExhausted ? 'opacity-50 cursor-not-allowed' : ''} ${selectedModel === 'gemini-3.1-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
+                      onClick={() => onModelChange('gemini-3.1-pro-preview')}
+                      disabled={isAuthenticated && freeProGenerationsRemaining <= 0 && credits < getCreditCost('gemini-3.1-pro-preview')}
+                      className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors flex items-center justify-between group ${
+                        isAuthenticated && freeProGenerationsRemaining <= 0 && credits < getCreditCost('gemini-3.1-pro-preview') ? 'opacity-50 cursor-not-allowed' : ''
+                      } ${selectedModel === 'gemini-3.1-pro-preview' ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300'}`}
                     >
                       <span className="flex flex-col">
-                        <span>Gemini 3.1 Pro</span>
-                        {isProExhausted && <span className="text-[10px] text-yellow-500/80">Daily limit reached</span>}
+                        <span className="flex items-center gap-1">
+                          Gemini 3.1 Pro
+                          {canUseFreePro && selectedModel === 'gemini-3.1-pro-preview' && (
+                            <Crown className="w-3 h-3 text-amber-400" />
+                          )}
+                        </span>
+                        <span className="text-[10px] text-zinc-500 flex items-center gap-1">
+                          {getCreditCost('gemini-3.1-pro-preview')} credits
+                          {canUseFreePro && <span className="text-amber-400/80">(free: {freeProGenerationsRemaining}/{FREE_PRO_GENERATIONS})</span>}
+                        </span>
                       </span>
                       {selectedModel === 'gemini-3.1-pro-preview' && <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.5)]" />}
                     </button>

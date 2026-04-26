@@ -17,6 +17,16 @@ variable "posthog_host" {
   default = "https://us.i.posthog.com"
 }
 
+variable "supabase_url" {
+  type        = string
+  description = "Supabase project URL. Must be supplied via terraform.tfvars or TF_VAR_supabase_url."
+}
+
+variable "supabase_service_role_key" {
+  type      = string
+  sensitive = true
+}
+
 # ==============================================================================
 # 1. TypeScript Lambda (Node.js) - RESTORED
 # ==============================================================================
@@ -24,7 +34,7 @@ variable "posthog_host" {
 # Zip the built TypeScript code
 data "archive_file" "lambda_zip_ts" {
   type        = "zip"
-  source_file = "${path.module}/../typescript_lambda/dist/index.js"
+  source_file = "${path.module}/../lambda_typescript/dist/index.js"
   output_path = "${path.module}/lambda_function_payload_ts.zip"
 }
 
@@ -41,9 +51,11 @@ resource "aws_lambda_function" "svg_generator" {
 
   environment {
     variables = {
-      GEMINI_API_KEY  = var.gemini_api_key
-      POSTHOG_API_KEY = var.posthog_api_key
-      POSTHOG_HOST    = var.posthog_host
+      GEMINI_API_KEY            = var.gemini_api_key
+      POSTHOG_API_KEY           = var.posthog_api_key
+      POSTHOG_HOST              = var.posthog_host
+      SUPABASE_URL              = var.supabase_url
+      SUPABASE_SERVICE_ROLE_KEY = var.supabase_service_role_key
     }
   }
 }
