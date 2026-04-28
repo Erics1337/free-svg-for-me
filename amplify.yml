@@ -6,7 +6,7 @@ frontend:
         - npm ci
     build:
       commands:
-        - env | grep GEMINI >> .env.production
+        - env | grep -E '^(GEMINI|STRIPE_|SUPABASE_|NEXT_PUBLIC_SUPABASE_|NEXT_PUBLIC_LAMBDA_|NEXT_PUBLIC_STRIPE_|NEXT_PUBLIC_APP_URL)' >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next

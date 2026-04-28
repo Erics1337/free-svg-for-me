@@ -51,14 +51,16 @@ export type CreditTransaction = {
   created_at: string;
 };
 
-// Credit costs per model
+import { CREDIT_COSTS as BaseCreditCosts, FREE_PRO_GENERATIONS } from './config';
+
+// Credit costs per model (mapped to model IDs)
 export const CREDIT_COSTS = {
-  'gemini-2.0-flash': parseInt(process.env.NEXT_PUBLIC_CREDIT_COST_FLASH || '1'),
-  'gemini-3-pro-preview': parseInt(process.env.NEXT_PUBLIC_CREDIT_COST_PRO || '3'),
-  'gemini-3.1-pro-preview': parseInt(process.env.NEXT_PUBLIC_CREDIT_COST_PRO_31 || '5'),
+  'gemini-2.0-flash': BaseCreditCosts.FLASH,
+  'gemini-3-pro-preview': BaseCreditCosts.PRO,
+  'gemini-3.1-pro-preview': BaseCreditCosts.PRO_31,
 };
 
-export const FREE_PRO_GENERATIONS = parseInt(process.env.NEXT_PUBLIC_FREE_PRO_GENS || '3');
+export { FREE_PRO_GENERATIONS };
 
 export function isProModel(model: string): boolean {
   return model.includes('pro');
